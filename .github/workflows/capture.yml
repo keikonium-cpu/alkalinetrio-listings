@@ -1,0 +1,37 @@
+name: Capture Screenshots
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 10,22 * * *" # 6AM and 6PM EST (10 and 22 UTC)
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Capture screenshots
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+        run: node index.js
+
+      - name: Commit updated gallery JSON
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
+          git add data/gallery.json
+          git commit -m "Update gallery JSON [skip ci]" || echo "No changes"
+          git push
