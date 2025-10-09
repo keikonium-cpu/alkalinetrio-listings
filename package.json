@@ -1,0 +1,10 @@
+{
+  "name": "screenshot-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "puppeteer": "^23.0.0",
+    "cloudinary": "^1.41.0"
+  }
+}
