@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 10,22 * * *" # 6AM and 6PM EST (10 and 22 UTC)
 
+permissions:
+  contents: write
+
 jobs:
   capture:
     runs-on: ubuntu-latest
