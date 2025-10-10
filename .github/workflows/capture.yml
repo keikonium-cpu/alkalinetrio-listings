@@ -3,7 +3,7 @@ name: Capture Screenshots
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 10,22 * * *" # 6AM and 6PM EST (10 and 22 UTC)
+    - cron: "0 22 * * 5" # Friday at 6PM EST (22 UTC, accounting for EST = UTC-5)
 
 permissions:
   contents: write
