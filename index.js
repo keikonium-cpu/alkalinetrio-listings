@@ -14,37 +14,62 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Load existing gallery data
+function loadExistingGallery() {
+  if (fs.existsSync(OUTPUT_FILE)) {
+    const data = fs.readFileSync(OUTPUT_FILE, "utf8");
+    return JSON.parse(data);
+  }
+  return { page: 1, total: 0, images: [] };
+}
+
 (async () => {
-const browser = await puppeteer.launch({
-  headless: true,
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  defaultViewport: { width: 1280, height: 1080 },
-});
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    defaultViewport: { width: 1280, height: 1080 },
+  });
 
   const page = await browser.newPage();
   console.log(`Loading ${URL} ...`);
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 60000 });
 
   const elements = await page.$$(`li[id^="item"]`);
-  console.log(`Found ${elements.length} <li> items.`);
+  console.log(`Found ${elements.length} <li> items on page.`);
 
-  const results = [];
+  // Load existing data and create a Set of existing IDs for fast lookup
+  const existingGallery = loadExistingGallery();
+  const existingIds = new Set(existingGallery.images.map(img => img.publicId));
+  console.log(`Found ${existingIds.size} existing items in gallery.`);
 
-  let count = 0;
+  const newResults = [];
+
   for (const el of elements) {
     const id = await el.evaluate((n) => n.id);
-    const filename = `${id}.png`;
 
-    console.log(`📸 Capturing ${id}`);
+    // Skip if this ID already exists
+    if (existingIds.has(id)) {
+      console.log(`⏭️  Skipping ${id} (already exists)`);
+      continue;
+    }
+
+    // Check if we've hit the max total items limit
+    if (existingGallery.images.length + newResults.length >= MAX_ITEMS) {
+      console.log(`⚠️  Reached maximum of ${MAX_ITEMS} items. Stopping capture.`);
+      break;
+    }
+
+    const filename = `${id}.png`;
+    console.log(`📸 Capturing NEW item: ${id}`);
     const buffer = await el.screenshot({ type: "png" });
 
-    console.log(`☁️ Uploading ${filename} to Cloudinary...`);
+    console.log(`☁️  Uploading ${filename} to Cloudinary...`);
     const result = await new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {
           folder: "website-screenshots",
           public_id: id,
-          overwrite: true,
+          overwrite: false, // Changed to false to avoid accidental overwrites
           resource_type: "image",
         },
         (error, result) => {
@@ -56,26 +81,31 @@ const browser = await puppeteer.launch({
     });
 
     const timestamp = new Date().toISOString();
-    results.push({
+    newResults.push({
       url: result.secure_url,
       timestamp,
       publicId: id,
     });
-
-    if (++count >= MAX_ITEMS) break;
   }
 
   await browser.close();
 
-  // Prepare JSON in gallery API format
+  console.log(`✅ Captured ${newResults.length} new items.`);
+
+  // Merge new results with existing data
+  const allImages = [...existingGallery.images, ...newResults];
+  
+  // Trim to MAX_ITEMS if necessary (keeping oldest items)
+  const finalImages = allImages.slice(0, MAX_ITEMS);
+
   const output = {
     page: 1,
-    total: results.length,
-    images: results,
+    total: finalImages.length,
+    images: finalImages,
   };
 
   fs.mkdirSync("./data", { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
 
-  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE}`);
+  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE} (${finalImages.length} total items)`);
 })();
