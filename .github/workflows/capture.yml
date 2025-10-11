@@ -38,7 +38,7 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./data/
-          server-dir: /data/
+          server-dir: /public_html/data/
           dangerous-clean-slate: false
 
       - name: Commit backup to GitHub
