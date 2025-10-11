@@ -31,10 +31,20 @@ jobs:
           TARGET_URL: ${{ secrets.TARGET_URL }}
         run: node index.js
 
-      - name: Commit updated gallery JSON
+      - name: Upload to server via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./data/
+          server-dir: /data/
+          dangerous-clean-slate: false
+
+      - name: Commit backup to GitHub
         run: |
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
-          git add data/gallery.json
-          git commit -m "Update gallery JSON [skip ci]" || echo "No changes"
+          git add data/eBaySales.json
+          git commit -m "Backup eBay sales JSON [skip ci]" || echo "No changes"
           git push
