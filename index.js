@@ -8,6 +8,7 @@ const URL = process.env.TARGET_URL;
 const OUTPUT_FILE = "./data/gallery.json";
 const MAX_ITEMS_PER_CAPTURE = 240; // Limit per capture session, not total storage
 const DELAY_BETWEEN_SCREENSHOTS = 300; // milliseconds (0.3 seconds)
+const ITEMS_PER_PAGE = 60;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -24,7 +25,34 @@ function loadExistingGallery() {
     const data = fs.readFileSync(OUTPUT_FILE, "utf8");
     return JSON.parse(data);
   }
-  return { page: 1, total: 0, images: [] };
+  return { pages: [] };
+}
+
+// Convert paginated structure to flat array for checking existing IDs
+function getAllImagesFlat(gallery) {
+  const allImages = [];
+  if (gallery.pages) {
+    for (const page of gallery.pages) {
+      allImages.push(...page.images);
+    }
+  }
+  return allImages;
+}
+
+// Convert flat array to paginated structure
+function createPaginatedStructure(allImages) {
+  const pages = [];
+  
+  for (let i = 0; i < allImages.length; i += ITEMS_PER_PAGE) {
+    const pageImages = allImages.slice(i, i + ITEMS_PER_PAGE);
+    pages.push({
+      page: Math.floor(i / ITEMS_PER_PAGE) + 1,
+      total: pageImages.length,
+      images: pageImages
+    });
+  }
+  
+  return { pages };
 }
 
 (async () => {
@@ -43,7 +71,8 @@ function loadExistingGallery() {
 
   // Load existing data and create a Set of existing IDs for fast lookup
   const existingGallery = loadExistingGallery();
-  const existingIds = new Set(existingGallery.images.map(img => img.publicId));
+  const existingImagesFlat = getAllImagesFlat(existingGallery);
+  const existingIds = new Set(existingImagesFlat.map(img => img.publicId));
   console.log(`Found ${existingIds.size} existing items in gallery.`);
 
   const newResults = [];
@@ -107,16 +136,15 @@ function loadExistingGallery() {
   console.log(`✅ Captured ${newResults.length} new items.`);
 
   // Merge new results with existing data (no cap on total storage)
-  const allImages = [...existingGallery.images, ...newResults];
+  const allImages = [...existingImagesFlat, ...newResults];
 
-  const output = {
-    page: 1,
-    total: allImages.length,
-    images: allImages,
-  };
+  // Convert to paginated structure
+  const output = createPaginatedStructure(allImages);
 
   fs.mkdirSync("./data", { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
 
-  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE} (${allImages.length} total items)`);
+  const totalItems = allImages.length;
+  const totalPages = output.pages.length;
+  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE} (${totalItems} total items across ${totalPages} pages)`);
 })();
