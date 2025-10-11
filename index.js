@@ -6,7 +6,7 @@ dotenv.config();
 
 const URL = process.env.TARGET_URL;
 const OUTPUT_FILE = "./data/gallery.json";
-const MAX_ITEMS_PER_CAPTURE = 240; // Limit per capture session, not total storage
+const MAX_ITEMS_PER_CAPTURE = 120; // Limit per capture session, not total storage
 const DELAY_BETWEEN_SCREENSHOTS = 300; // milliseconds (0.3 seconds)
 const ITEMS_PER_PAGE = 60;
 
