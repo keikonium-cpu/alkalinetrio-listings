@@ -305,6 +305,17 @@
           "publicId": "item54cb139f20"
         }
       ]
+    },
+    {
+      "page": 2,
+      "total": 1,
+      "images": [
+        {
+          "url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760224705/website-screenshots/item2e0b6d7e38.webp",
+          "timestamp": "2025-10-11T23:18:26.098Z",
+          "publicId": "item2e0b6d7e38"
+        }
+      ]
     }
   ]
 }
