@@ -5,7 +5,7 @@ import fs from "fs";
 dotenv.config();
 
 const URL = process.env.TARGET_URL;
-const OUTPUT_FILE = "./data/eBaySales.json";
+const OUTPUT_FILE = ".public_html/data/eBaySales.json";
 const MAX_ITEMS_PER_CAPTURE = 60; // Limit per capture session, not total storage
 const DELAY_BETWEEN_SCREENSHOTS = 300; // milliseconds (0.3 seconds)
 const ITEMS_PER_PAGE = 60;
