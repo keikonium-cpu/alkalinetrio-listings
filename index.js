@@ -6,13 +6,17 @@ dotenv.config();
 
 const URL = process.env.TARGET_URL;
 const OUTPUT_FILE = "./data/gallery.json";
-const MAX_ITEMS = 60;
+const MAX_ITEMS_PER_CAPTURE = 60; // Limit per capture session, not total storage
+const DELAY_BETWEEN_SCREENSHOTS = 300; // milliseconds (0.3 seconds)
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Helper function to add delay
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Load existing gallery data
 function loadExistingGallery() {
@@ -43,6 +47,7 @@ function loadExistingGallery() {
   console.log(`Found ${existingIds.size} existing items in gallery.`);
 
   const newResults = [];
+  let capturedCount = 0;
 
   for (const el of elements) {
     const id = await el.evaluate((n) => n.id);
@@ -53,15 +58,20 @@ function loadExistingGallery() {
       continue;
     }
 
-    // Check if we've hit the max total items limit
-    if (existingGallery.images.length + newResults.length >= MAX_ITEMS) {
-      console.log(`⚠️  Reached maximum of ${MAX_ITEMS} items. Stopping capture.`);
+    // Check if we've hit the max per capture limit
+    if (capturedCount >= MAX_ITEMS_PER_CAPTURE) {
+      console.log(`⚠️  Reached maximum of ${MAX_ITEMS_PER_CAPTURE} items per capture. Stopping.`);
       break;
     }
 
-    const filename = `${id}.png`;
+    const filename = `${id}.webp`;
     console.log(`📸 Capturing NEW item: ${id}`);
+    
+    // Take screenshot as PNG first (Puppeteer doesn't support WebP directly)
     const buffer = await el.screenshot({ type: "png" });
+
+    // Add delay between screenshots to be respectful to the server
+    await delay(DELAY_BETWEEN_SCREENSHOTS);
 
     console.log(`☁️  Uploading ${filename} to Cloudinary...`);
     const result = await new Promise((resolve, reject) => {
@@ -69,7 +79,9 @@ function loadExistingGallery() {
         {
           folder: "website-screenshots",
           public_id: id,
-          overwrite: false, // Changed to false to avoid accidental overwrites
+          format: "webp", // Convert to WebP on Cloudinary
+          quality: "auto:best", // High quality, optimized size
+          overwrite: false,
           resource_type: "image",
         },
         (error, result) => {
@@ -86,26 +98,25 @@ function loadExistingGallery() {
       timestamp,
       publicId: id,
     });
+
+    capturedCount++;
   }
 
   await browser.close();
 
   console.log(`✅ Captured ${newResults.length} new items.`);
 
-  // Merge new results with existing data
+  // Merge new results with existing data (no cap on total storage)
   const allImages = [...existingGallery.images, ...newResults];
-  
-  // Trim to MAX_ITEMS if necessary (keeping oldest items)
-  const finalImages = allImages.slice(0, MAX_ITEMS);
 
   const output = {
     page: 1,
-    total: finalImages.length,
-    images: finalImages,
+    total: allImages.length,
+    images: allImages,
   };
 
   fs.mkdirSync("./data", { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
 
-  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE} (${finalImages.length} total items)`);
+  console.log(`✅ Saved gallery JSON: ${OUTPUT_FILE} (${allImages.length} total items)`);
 })();
