@@ -1,5 +1,5 @@
 # alkalinetrio-listings
-Capturing Alkaline Trio Listings
+Capturing Alkaline Trio Listings. This script captures the individual listings for each sold item on my sales.html page.
 
 ## Configuration
 
