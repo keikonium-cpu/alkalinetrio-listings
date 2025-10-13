@@ -1,5 +1,6 @@
-requests
-pillow
-pytesseract
-beautifulsoup4
-selenium
+pytesseract>=0.3.10
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+numpy>=1.24.0
