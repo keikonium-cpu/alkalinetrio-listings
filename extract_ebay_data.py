@@ -3,7 +3,7 @@ from PIL import Image
 import cv2
 import numpy as np
 import requests
-from bs4 import BeautifulSoup
+from io import BytesIO
 import json
 import re
 import hashlib
@@ -52,234 +52,189 @@ class TesseractEbayExtractor:
             logging.error(f"Error loading existing data: {e}")
             self.results = []
     
-    def preprocess_image(self, image: np.ndarray) -> np.ndarray:
-        """Preprocess image for better OCR accuracy"""
-        # Convert to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
-        # Apply adaptive thresholding
-        thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY, 11, 2
-        )
-        
-        # Denoise
-        denoised = cv2.fastNlMeansDenoising(thresh)
-        
-        # Increase contrast
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(denoised)
-        
-        return enhanced
-    
     def compute_image_hash(self, image_url: str) -> str:
         """Generate hash for duplicate detection"""
         return hashlib.md5(image_url.encode()).hexdigest()
     
-    def extract_date(self, text: str) -> Optional[str]:
-        """Extract sold date from OCR text"""
-        # Pattern: "Sold Oct 11, 2025" or variations
-        patterns = [
-            r'Sold\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})',
-            r'([A-Za-z]+\s+\d{1,2},?\s+\d{4})',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-        return None
-    
-    def extract_price(self, text: str) -> Optional[str]:
-        """Extract price from OCR text"""
-        # Pattern: $XX.XX or $XXX.XX
-        patterns = [
-            r'\$(\d+\.\d{2})',
-            r'\$(\d+)',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, text)
-            if match:
-                return match.group(1)
-        return None
-    
-    def extract_title(self, text: str) -> Optional[str]:
-        """Extract item title from OCR text"""
-        # Look for the main product line (usually contains brand/item info)
-        lines = text.split('\n')
-        
-        # Filter out common non-title lines
-        exclude_terms = ['sold', 'brand new', 'positive', 'delivery', 'located', 'offer']
-        
-        for line in lines:
-            line = line.strip()
-            # Look for lines that are substantial and don't match exclusions
-            if len(line) > 20 and not any(term in line.lower() for term in exclude_terms):
-                # Check if it contains typical product info indicators
-                if any(char in line for char in ['-', '(', ')', ',']):
-                    return line
-        
-        return None
-    
-    def extract_seller(self, text: str) -> Optional[str]:
-        """Extract seller username from OCR text"""
-        # Pattern: username followed by "100% positive"
-        pattern = r'([a-zA-Z0-9_\-]+)\s*100%\s*positive'
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            return match.group(1)
-        return None
-    
-    def extract_from_image_url(self, image_url: str, item_id: str) -> Dict:
-        """Download image and extract data using Tesseract OCR"""
-        result = {
-            'item_id': item_id,
-            'image_url': image_url,
-            'image_hash': self.compute_image_hash(image_url),
-            'success': False,
-            'processed_at': datetime.now().isoformat()
-        }
+    def extract_ebay_listings(self, image_url: str, item_id: str) -> List[Dict]:
+        """Extract eBay listings from image using improved OCR."""
+        listings = []
         
         try:
-            # Check for duplicates
-            if result['image_hash'] in self.seen_hashes:
-                logging.info(f"Skipping duplicate: {item_id}")
-                self.duplicate_count += 1
-                return None
-            
             # Download image
             response = requests.get(image_url, timeout=10)
             response.raise_for_status()
+            img = Image.open(BytesIO(response.content))
             
-            # Convert to numpy array
-            image_array = np.asarray(bytearray(response.content), dtype=np.uint8)
-            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+            # No cropping - these are already individual listing screenshots
+            # Perform OCR directly on the full image
+            text = pytesseract.image_to_string(img)
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
             
-            if image is None:
-                raise ValueError("Failed to decode image")
+            logging.info(f"  OCR extracted {len(lines)} lines")
             
-            # Preprocess image
-            processed = self.preprocess_image(image)
-            
-            # Perform OCR with multiple configurations
-            custom_config = r'--oem 3 --psm 6'
-            text = pytesseract.image_to_string(processed, config=custom_config)
-            
-            # Also try with original image for comparison
-            text_original = pytesseract.image_to_string(image, config=custom_config)
-            
-            # Use the text with more content
-            full_text = text if len(text) > len(text_original) else text_original
-            
-            # Extract structured data
-            result['sold_date'] = self.extract_date(full_text)
-            result['title'] = self.extract_title(full_text)
-            result['sold_price'] = self.extract_price(full_text)
-            result['seller'] = self.extract_seller(full_text)
-            result['raw_text'] = full_text
-            result['success'] = True
-            
-            # Mark as seen
-            self.seen_hashes.add(result['image_hash'])
-            
-            logging.info(f"✓ Extracted: {item_id} - {result.get('title', 'N/A')[:50]}")
-            
-        except Exception as e:
-            result['error'] = str(e)
-            self.error_count += 1
-            logging.error(f"✗ Error processing {item_id}: {e}")
-        
-        return result
-    
-    def scrape_cloudinary_images(self, url: str) -> List[Dict[str, str]]:
-        """Scrape Cloudinary image URLs from the website"""
-        logging.info(f"Scraping images from: {url}")
-        
-        try:
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
-            # Debug: Print the HTML structure
-            logging.info(f"Page title: {soup.title.string if soup.title else 'No title'}")
-            
-            images = []
-            
-            # Try multiple selector patterns
-            selectors = [
-                {'class': 'gallery-item'},  # div with class="gallery-item"
-                {'data-id': re.compile(r'item')},  # Any element with data-id containing "item"
-            ]
-            
-            items = []
-            for selector in selectors:
-                found = soup.find_all('div', selector)
-                if found:
-                    logging.info(f"Found {len(found)} items with selector: {selector}")
-                    items.extend(found)
-                    break
-            
-            # If still no items found, try finding all divs with data-id
-            if not items:
-                items = soup.find_all('div', attrs={'data-id': True})
-                logging.info(f"Found {len(items)} divs with data-id attribute")
-            
-            # If still nothing, try finding all img tags with cloudinary URLs
-            if not items:
-                logging.info("No divs found, searching for all img tags with Cloudinary URLs")
-                all_imgs = soup.find_all('img')
-                logging.info(f"Found {len(all_imgs)} total img tags")
+            i = 0
+            while i < len(lines):
+                line = lines[i]
                 
-                for img in all_imgs:
-                    src = img.get('src') or img.get('data-src')
-                    if src and 'cloudinary' in src and 'item' in src:
-                        # Extract item ID from URL
-                        match = re.search(r'item([a-zA-Z0-9]+)', src)
-                        if match:
-                            item_id = f"item{match.group(1)}"
-                            images.append({
-                                'item_id': item_id,
-                                'image_url': src
-                            })
-                            logging.info(f"Found image: {item_id}")
-            else:
-                # Process items with data-id
-                logging.info(f"Processing {len(items)} items")
+                # Find date pattern (Sold/Ended + Date)
+                date_match = re.match(
+                    r'^(Sold|Ended)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}',
+                    line,
+                    re.I
+                )
                 
-                for item in items:
-                    item_id = item.get('data-id')
-                    if not item_id:
+                if not date_match:
+                    i += 1
+                    continue
+                
+                # Start building a listing
+                listing = {
+                    'item_id': item_id,
+                    'status': date_match.group(1).capitalize(),
+                    'sold_date': line,
+                    'listing_title': '',
+                    'sold_price': None,
+                    'seller': None,
+                    'processed_at': datetime.now().isoformat()
+                }
+                
+                logging.info(f"    [{listing['status']}] {line}")
+                i += 1
+                
+                # Extract title (next 1-5 lines until condition/price)
+                title_parts = []
+                while i < len(lines) and len(title_parts) < 5:
+                    cur = lines[i]
+                    
+                    # Stop at condition keywords
+                    if re.match(r'^(Brand New|Pre-Owned|New with tags|Open box|Used|For parts)$', cur, re.I):
+                        logging.info(f"      Condition: {cur}")
+                        i += 1
+                        break
+                    
+                    # Stop at price
+                    if re.match(r'^\$\d+', cur):
+                        logging.info(f"      Price line: {cur}")
+                        break
+                    
+                    # Skip common non-title lines
+                    if re.match(r'^(\d+\s*(bid|watcher)|or Best|Buy It Now|Located|View|Sell|Free|Watch|\+\$)', cur, re.I):
+                        i += 1
                         continue
                     
-                    # Look for img tags within the div
-                    img_tags = item.find_all('img')
+                    # Valid title line (has substantial text)
+                    if len(cur) > 2 and re.search(r'[a-zA-Z]{3,}', cur):
+                        title_parts.append(cur)
+                        logging.info(f"      Title: {cur}")
                     
-                    for img in img_tags:
-                        src = img.get('src') or img.get('data-src')
-                        if src and 'cloudinary' in src:
-                            images.append({
-                                'item_id': item_id,
-                                'image_url': src
-                            })
-                            logging.info(f"Found image: {item_id}")
-                            break  # Only take first image per item
+                    i += 1
+                
+                listing['listing_title'] = ' '.join(title_parts).strip()
+                
+                # Extract price (search next 8 lines)
+                for _ in range(8):
+                    if i >= len(lines):
+                        break
+                    cur = lines[i]
+                    price_match = re.search(r'\$(\d+[\d,]*\.?\d{0,2})', cur)
+                    if price_match:
+                        listing['sold_price'] = f"${price_match.group(1)}"
+                        logging.info(f"      Price: {listing['sold_price']}")
+                        i += 1
+                        break
+                    i += 1
+                
+                # Extract seller (search next 8 lines)
+                for _ in range(8):
+                    if i >= len(lines):
+                        break
+                    cur = lines[i]
+                    
+                    # Stop if next listing starts
+                    if re.match(r'^(Sold|Ended)\s+', cur, re.I):
+                        break
+                    
+                    # Pattern 1: username with percentage on same line
+                    seller_match = re.search(r'([a-zA-Z0-9_-]+)\s+(\d+\.?\d*)\s*%', cur, re.I)
+                    if seller_match:
+                        seller = seller_match.group(1)
+                        # Clean common OCR errors
+                        seller = re.sub(r'^(Pre|Brand|New|Ouinect|Oninect)', '', seller, flags=re.I)
+                        if len(seller) > 2:
+                            listing['seller'] = seller
+                            logging.info(f"      Seller: {listing['seller']}")
+                            i += 1
+                            break
+                    
+                    # Pattern 2: username on one line, percentage on next
+                    username_pattern = r'^[a-zA-Z][a-zA-Z0-9_-]{2,}$'
+                    if re.match(username_pattern, cur):
+                        if i + 1 < len(lines):
+                            next_line = lines[i + 1]
+                            if re.search(r'^\d+\.?\d*\s*%', next_line):
+                                listing['seller'] = cur
+                                logging.info(f"      Seller: {listing['seller']}")
+                                i += 2
+                                break
+                    
+                    i += 1
+                
+                # Save if valid (has title and price)
+                if listing['listing_title'] and listing['sold_price']:
+                    # Clean up title whitespace
+                    listing['listing_title'] = re.sub(r'\s{2,}', ' ', listing['listing_title']).strip()
+                    listings.append(listing)
+                    logging.info(f"    ✓ Saved listing")
+                else:
+                    missing = []
+                    if not listing['listing_title']:
+                        missing.append('title')
+                    if not listing['sold_price']:
+                        missing.append('price')
+                    logging.info(f"    ✗ Missing: {', '.join(missing)}")
             
-            logging.info(f"Total Cloudinary images found: {len(images)}")
-            
-            # If still no images, log a sample of the HTML
-            if not images:
-                logging.error("No images found. HTML sample:")
-                body = soup.find('body')
-                if body:
-                    sample = str(body)[:1000]
-                    logging.error(sample)
-            
-            return images
+            logging.info(f"  ✓ Found {len(listings)} listings")
+            return listings
             
         except Exception as e:
-            logging.error(f"Error scraping website: {e}", exc_info=True)
+            logging.error(f"  ✗ Error extracting from {item_id}: {e}")
+            import traceback
+            traceback.print_exc()
             return []
+    
+    def extract_from_image_url(self, image_url: str, item_id: str) -> Optional[Dict]:
+        """Process a single image and extract all listings from it"""
+        image_hash = self.compute_image_hash(image_url)
+        
+        # Check for duplicates
+        if image_hash in self.seen_hashes:
+            logging.info(f"Skipping duplicate: {item_id}")
+            self.duplicate_count += 1
+            return None
+        
+        # Extract listings from this image
+        listings = self.extract_ebay_listings(image_url, item_id)
+        
+        # Mark as seen
+        self.seen_hashes.add(image_hash)
+        
+        # Return a summary record for this image
+        result = {
+            'item_id': item_id,
+            'image_url': image_url,
+            'image_hash': image_hash,
+            'success': len(listings) > 0,
+            'listings_found': len(listings),
+            'listings': listings,
+            'processed_at': datetime.now().isoformat()
+        }
+        
+        if len(listings) == 0:
+            result['error'] = 'No listings extracted'
+            self.error_count += 1
+        
+        return result
     
     def load_from_json(self, json_file: str) -> List[Dict[str, str]]:
         """Load image URLs directly from eBaySales.json"""
@@ -333,17 +288,6 @@ class TesseractEbayExtractor:
         
         self._process_images(images, delay, retry_errors, max_images)
     
-    def process_website(self, url: str, delay: float = 1.0, retry_errors: bool = True, max_images: any = "all"):
-        """Process all images from the website"""
-        images = self.scrape_cloudinary_images(url)
-        
-        if not images:
-            logging.error("No images found to process")
-            self._save_results()
-            return
-        
-        self._process_images(images, delay, retry_errors, max_images)
-    
     def _process_images(self, images: List[Dict[str, str]], delay: float, retry_errors: bool, max_images: any = "all"):
         """Common processing logic for images"""
         # Determine how many images to process
@@ -360,7 +304,7 @@ class TesseractEbayExtractor:
         # Process each image
         for i, img_data in enumerate(images_to_process):
             try:
-                logging.info(f"Processing {i+1}/{len(images_to_process)}: {img_data['item_id']}")
+                logging.info(f"\n[{i+1}/{len(images_to_process)}] Processing: {img_data['item_id']}")
                 
                 result = self.extract_from_image_url(
                     img_data['image_url'], 
@@ -440,14 +384,16 @@ class TesseractEbayExtractor:
         """Print processing summary"""
         successful = sum(1 for r in self.results if r.get('success'))
         failed = sum(1 for r in self.results if not r.get('success'))
+        total_listings = sum(r.get('listings_found', 0) for r in self.results)
         
         print("\n" + "="*60)
         print("EXTRACTION SUMMARY")
         print("="*60)
-        print(f"Total processed:    {len(self.results)}")
+        print(f"Images processed:   {len(self.results)}")
         print(f"Successful:         {successful}")
         print(f"Failed:             {failed}")
         print(f"Duplicates skipped: {self.duplicate_count}")
+        print(f"Total listings:     {total_listings}")
         print(f"Output file:        {self.output_file}")
         print("="*60)
 
@@ -476,9 +422,4 @@ if __name__ == "__main__":
     else:
         # Fallback to scraping website
         logging.info("No eBaySales.json found, scraping website...")
-        extractor.process_website(
-            url="http://www.alkalinetrioarchive.com/sales.html",
-            delay=DELAY_BETWEEN_IMAGES,
-            retry_errors=RETRY_FAILED_EXTRACTIONS,
-            max_images=MAX_IMAGES_TO_PROCESS
-        )
+        logging.error("Website scraping not implemented - please ensure eBaySales.json exists")
