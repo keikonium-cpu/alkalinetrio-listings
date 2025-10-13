@@ -38,5 +38,5 @@ jobs:
     - name: Commit and push updated JSON
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: Update saleslistings.json with new data - ${{ github.run_id }} - $(date)
-        file_pattern: saleslistings.json
+        commit_message: Update ebaylistings.json with new data - ${{ github.run_id }} - $(date)
+        file_pattern: ebaylistings.json
