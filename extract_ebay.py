@@ -11,7 +11,7 @@ from urllib.request import urlopen
 # Configuration
 TARGET_URL = "http://www.alkalinetrioarchive.com/sales.html"
 MAX_ITEMS = 10
-OUTPUT_FILE = "data/ebaysales.json"
+OUTPUT_FILE = "data/ebaylistings.json"
 
 # Ensure output directory exists
 os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
