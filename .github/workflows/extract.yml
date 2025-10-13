@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITTY_PAT }}  # Use PAT for full write access
+        token: ${{ secrets.GITHUB_TOKEN }}  # Use PAT for full write access
         persist-credentials: true  # Enable for push
 
     - name: Set up Python
