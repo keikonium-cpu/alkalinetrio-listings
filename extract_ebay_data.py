@@ -201,46 +201,151 @@ class TesseractEbayExtractor:
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
             
+            # Debug: Print the HTML structure
+            logging.info(f"Page title: {soup.title.string if soup.title else 'No title'}")
+            
             images = []
             
-            # Find all divs with data-id attribute matching "item###"
-            items = soup.find_all('div', {'data-id': re.compile(r'item\d+')})
+            # Try multiple selector patterns
+            selectors = [
+                {'class': 'gallery-item'},  # div with class="gallery-item"
+                {'data-id': re.compile(r'item')},  # Any element with data-id containing "item"
+            ]
             
-            logging.info(f"Found {len(items)} items with data-id")
+            items = []
+            for selector in selectors:
+                found = soup.find_all('div', selector)
+                if found:
+                    logging.info(f"Found {len(found)} items with selector: {selector}")
+                    items.extend(found)
+                    break
             
-            for item in items:
-                item_id = item.get('data-id')
+            # If still no items found, try finding all divs with data-id
+            if not items:
+                items = soup.find_all('div', attrs={'data-id': True})
+                logging.info(f"Found {len(items)} divs with data-id attribute")
+            
+            # If still nothing, try finding all img tags with cloudinary URLs
+            if not items:
+                logging.info("No divs found, searching for all img tags with Cloudinary URLs")
+                all_imgs = soup.find_all('img')
+                logging.info(f"Found {len(all_imgs)} total img tags")
                 
-                # Look for img tags within the div
-                img_tags = item.find_all('img')
-                
-                for img in img_tags:
+                for img in all_imgs:
                     src = img.get('src') or img.get('data-src')
-                    if src and 'cloudinary' in src:
-                        images.append({
-                            'item_id': item_id,
-                            'image_url': src
-                        })
-                        break  # Only take first image per item
+                    if src and 'cloudinary' in src and 'item' in src:
+                        # Extract item ID from URL
+                        match = re.search(r'item([a-zA-Z0-9]+)', src)
+                        if match:
+                            item_id = f"item{match.group(1)}"
+                            images.append({
+                                'item_id': item_id,
+                                'image_url': src
+                            })
+                            logging.info(f"Found image: {item_id}")
+            else:
+                # Process items with data-id
+                logging.info(f"Processing {len(items)} items")
+                
+                for item in items:
+                    item_id = item.get('data-id')
+                    if not item_id:
+                        continue
+                    
+                    # Look for img tags within the div
+                    img_tags = item.find_all('img')
+                    
+                    for img in img_tags:
+                        src = img.get('src') or img.get('data-src')
+                        if src and 'cloudinary' in src:
+                            images.append({
+                                'item_id': item_id,
+                                'image_url': src
+                            })
+                            logging.info(f"Found image: {item_id}")
+                            break  # Only take first image per item
             
-            logging.info(f"Found {len(images)} Cloudinary images")
+            logging.info(f"Total Cloudinary images found: {len(images)}")
+            
+            # If still no images, log a sample of the HTML
+            if not images:
+                logging.error("No images found. HTML sample:")
+                body = soup.find('body')
+                if body:
+                    sample = str(body)[:1000]
+                    logging.error(sample)
+            
             return images
             
         except Exception as e:
-            logging.error(f"Error scraping website: {e}")
+            logging.error(f"Error scraping website: {e}", exc_info=True)
             return []
+    
+    def load_from_json(self, json_file: str) -> List[Dict[str, str]]:
+        """Load image URLs directly from eBaySales.json"""
+        logging.info(f"Loading images from JSON file: {json_file}")
+        
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            images = []
+            
+            # Handle paginated structure
+            if 'pages' in data:
+                for page in data['pages']:
+                    for img_data in page.get('images', []):
+                        item_id = img_data.get('publicId')
+                        url = img_data.get('url')
+                        
+                        if item_id and url and 'cloudinary' in url:
+                            images.append({
+                                'item_id': item_id,
+                                'image_url': url
+                            })
+            # Handle flat structure
+            elif isinstance(data, list):
+                for img_data in data:
+                    item_id = img_data.get('publicId')
+                    url = img_data.get('url')
+                    
+                    if item_id and url and 'cloudinary' in url:
+                        images.append({
+                            'item_id': item_id,
+                            'image_url': url
+                        })
+            
+            logging.info(f"Loaded {len(images)} images from JSON")
+            return images
+            
+        except Exception as e:
+            logging.error(f"Error loading JSON file: {e}")
+            return []
+    
+    def process_from_json(self, json_file: str, delay: float = 1.0, retry_errors: bool = True):
+        """Process images from eBaySales.json file"""
+        images = self.load_from_json(json_file)
+        
+        if not images:
+            logging.error("No images found in JSON file")
+            self._save_results()
+            return
+        
+        self._process_images(images, delay, retry_errors)
     
     def process_website(self, url: str, delay: float = 1.0, retry_errors: bool = True):
         """Process all images from the website"""
-        # Scrape image URLs
         images = self.scrape_cloudinary_images(url)
         
         if not images:
             logging.error("No images found to process")
-            # Save empty results to ensure file exists
             self._save_results()
             return
         
+        self._process_images(images, delay, retry_errors)
+    
+    def _process_images(self, images: List[Dict[str, str]], delay: float, retry_errors: bool):
+        """Common processing logic for images"""
         logging.info(f"Processing {len(images)} images...")
         
         # Process each image
@@ -342,9 +447,19 @@ if __name__ == "__main__":
     # Initialize extractor
     extractor = TesseractEbayExtractor(output_file="data/EbayListings.json")
     
-    # Process website
-    extractor.process_website(
-        url="http://www.alkalinetrioarchive.com/sales.html",
-        delay=0.5,  # 0.5 second delay between requests
-        retry_errors=True  # Retry failed extractions
-    )
+    # Try loading from existing eBaySales.json first (if it exists)
+    if Path("data/eBaySales.json").exists():
+        logging.info("Found data/eBaySales.json, loading from there...")
+        extractor.process_from_json(
+            json_file="data/eBaySales.json",
+            delay=0.5,
+            retry_errors=True
+        )
+    else:
+        # Fallback to scraping website
+        logging.info("No eBaySales.json found, scraping website...")
+        extractor.process_website(
+            url="http://www.alkalinetrioarchive.com/sales.html",
+            delay=0.5,
+            retry_errors=True
+        )
