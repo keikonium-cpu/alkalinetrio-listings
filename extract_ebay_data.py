@@ -237,6 +237,8 @@ class TesseractEbayExtractor:
         
         if not images:
             logging.error("No images found to process")
+            # Save empty results to ensure file exists
+            self._save_results()
             return
         
         logging.info(f"Processing {len(images)} images...")
@@ -270,7 +272,7 @@ class TesseractEbayExtractor:
                 logging.error(f"Unexpected error processing {img_data['item_id']}: {e}")
                 self.error_count += 1
         
-        # Final save
+        # Final save (always save, even if no new results)
         self._save_results()
         
         # Retry failed items if requested
@@ -310,11 +312,15 @@ class TesseractEbayExtractor:
     def _save_results(self):
         """Save results to JSON file"""
         try:
+            # Ensure directory exists
+            Path(self.output_file).parent.mkdir(parents=True, exist_ok=True)
+            
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 json.dump(self.results, f, indent=2, ensure_ascii=False)
             logging.info(f"Results saved to: {self.output_file}")
         except Exception as e:
             logging.error(f"Error saving results: {e}")
+            raise
     
     def _print_summary(self):
         """Print processing summary"""
