@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import time
 
 def fetch_all_image_urls(base_url):
-    """Fetch image URLs from ALL pages of the gallery."""
+    """Fetch image URLs from the first page, limited to the first 10 images for testing."""
     try:
         chrome_options = Options()
         chrome_options.add_argument("--headless")
@@ -22,48 +22,36 @@ def fetch_all_image_urls(base_url):
         all_image_urls = {}
         page = 1
         
-        while True:
-            url = f"{base_url}?page={page}"
-            print(f"Loading page {page}: {url}")
-            driver.get(url)
+        url = f"{base_url}?page={page}"
+        print(f"Loading page {page}: {url}")
+        driver.get(url)
+        
+        try:
+            wait = WebDriverWait(driver, 30)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gallery-item")))
+            time.sleep(2)
             
-            try:
-                wait = WebDriverWait(driver, 30)
-                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gallery-item")))
-                time.sleep(2)
-                
-                html = driver.page_source
-                soup = BeautifulSoup(html, 'html.parser')
-                gallery_elements = soup.find_all('div', class_='gallery-item')
-                
-                if len(gallery_elements) == 0:
-                    print(f"No gallery items found on page {page}. Stopping.")
-                    break
-                
-                page_images = {}
-                for gallery in gallery_elements:
-                    img_id = gallery.get('data-id')
-                    img_tag = gallery.find('img')
-                    src = img_tag.get('src') if img_tag else None
-                    if img_id and src:
-                        page_images[img_id] = src
-                
-                print(f"Page {page}: Found {len(page_images)} images")
-                all_image_urls.update(page_images)
-                
-                pagination = soup.find('div', id='pagination')
-                if pagination:
-                    next_page_link = pagination.find('a', {'data-page': str(page + 1)})
-                    if not next_page_link:
-                        break
-                else:
-                    break
-                
-                page += 1
-                
-            except Exception as e:
-                print(f"Error on page {page}: {e}")
-                break
+            html = driver.page_source
+            soup = BeautifulSoup(html, 'html.parser')
+            gallery_elements = soup.find_all('div', class_='gallery-item', limit=10)  # Limit to first 10 images
+            
+            if len(gallery_elements) == 0:
+                print(f"No gallery items found on page {page}. Stopping.")
+                return {}
+            
+            page_images = {}
+            for gallery in gallery_elements:
+                img_id = gallery.get('data-id')
+                img_tag = gallery.find('img')
+                src = img_tag.get('src') if img_tag else None
+                if img_id and src:
+                    page_images[img_id] = src
+            
+            print(f"Page {page}: Found {len(page_images)} images")
+            all_image_urls.update(page_images)
+            
+        except Exception as e:
+            print(f"Error on page {page}: {e}")
         
         driver.quit()
         print(f"Total images collected: {len(all_image_urls)}")
@@ -78,7 +66,7 @@ def fetch_all_image_urls(base_url):
         return {}
 
 def extract_ebay_listings(image_url):
-    """Extract eBay listings from cropped image."""
+    """Extract eBay listings from the full image."""
     try:
         import requests
         from io import BytesIO
@@ -89,10 +77,7 @@ def extract_ebay_listings(image_url):
         response.raise_for_status()
         img = Image.open(BytesIO(response.content))
         
-        # Crop to listing area (remove sidebar and header)
-        width, height = img.size
-        img = img.crop((0, 0, width, height))
-        
+        # Removed cropping, process full image
         text = pytesseract.image_to_string(img)
         lines = [line.strip() for line in text.split('\n') if line.strip()]
         
