@@ -59,6 +59,6 @@ jobs:
       run: |
         git config user.name "GitHub Action"
         git config user.email "actions@github.com"
-        git add data/saleslistings.json
-        git commit -m "Update saleslistings.json - $(date)" || echo "No changes to commit"
+        git add data/ebaylistings.json
+        git commit -m "Update ebaylistings.json - $(date)" || echo "No changes to commit"
         git push
