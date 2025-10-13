@@ -1,0 +1,42 @@
+name: Extract eBay Listings
+
+on:
+  schedule:
+    # Runs at 7 AM EST (11 UTC) and 7 PM EST (23 UTC)
+    - cron: '0 11,23 * * *'
+  workflow_dispatch:  # Allows manual trigger for testing
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest  # Free Linux runner
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITTY_PAT }}  # Use PAT for full write access
+        persist-credentials: true  # Enable for push
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies (Chrome for Selenium)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr google-chrome-stable
+        # Verify Chrome
+        google-chrome --version
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run extraction script
+      run: python extract_ebay.py
+
+    - name: Commit and push updated JSON
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Update listings.json with new data - ${{ github.run_id }} - $(date)
+        file_pattern: listings.json
