@@ -31,10 +31,30 @@ jobs:
         pip install --upgrade pip
         pip install pytesseract opencv-python-headless pillow requests beautifulsoup4 numpy
         
+    - name: Ensure data directory exists
+      run: |
+        mkdir -p data
+        
     - name: Run extraction script
       run: |
         python extract_ebay_data.py
       continue-on-error: true  # Continue even if some extractions fail
+        
+    - name: Check if files exist
+      id: check_files
+      run: |
+        if [ -f "data/EbayListings.json" ]; then
+          echo "json_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "json_exists=false" >> $GITHUB_OUTPUT
+          echo "[]" > data/EbayListings.json
+        fi
+        if [ -f "extraction.log" ]; then
+          echo "log_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "log_exists=false" >> $GITHUB_OUTPUT
+          touch extraction.log
+        fi
         
     - name: Upload results as artifact
       uses: actions/upload-artifact@v4
@@ -49,14 +69,17 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add data/EbayListings.json
-        git add extraction.log
-        git diff --quiet && git diff --staged --quiet || git commit -m "Update eBay data extraction - $(date +'%Y-%m-%d %H:%M:%S')"
-        git push
+        git add -A data/EbayListings.json extraction.log
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update eBay data extraction - $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
+        fi
       continue-on-error: true
     
     - name: Upload to server via FTP (optional)
-      if: success()
+      if: success() && steps.check_files.outputs.json_exists == 'true'
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         server: ${{ secrets.FTP_SERVER }}
