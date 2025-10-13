@@ -83,7 +83,7 @@ jobs:
         fi
       continue-on-error: true
     
-    - name: Upload to server via FTP (optional)
+    - name: Upload to server via FTP
       if: success() && steps.check_files.outputs.json_exists == 'true'
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -91,6 +91,6 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./data/
-        server-dir: /data/
+        server-dir: /public_html/data/
         dangerous-clean-slate: false
       continue-on-error: true
