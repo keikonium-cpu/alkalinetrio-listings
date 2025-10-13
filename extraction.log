@@ -1,0 +1,5 @@
+2025-10-13 20:55:50,166 - INFO - Scraping images from: http://www.alkalinetrioarchive.com/sales.html
+2025-10-13 20:55:50,538 - INFO - Found 0 items with data-id
+2025-10-13 20:55:50,538 - INFO - Found 0 Cloudinary images
+2025-10-13 20:55:50,538 - ERROR - No images found to process
+2025-10-13 20:55:50,538 - INFO - Results saved to: data/EbayListings.json
