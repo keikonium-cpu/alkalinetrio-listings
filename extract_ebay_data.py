@@ -322,7 +322,7 @@ class TesseractEbayExtractor:
             logging.error(f"Error loading JSON file: {e}")
             return []
     
-    def process_from_json(self, json_file: str, delay: float = 1.0, retry_errors: bool = True):
+    def process_from_json(self, json_file: str, delay: float = 1.0, retry_errors: bool = True, max_images: any = "all"):
         """Process images from eBaySales.json file"""
         images = self.load_from_json(json_file)
         
@@ -331,9 +331,9 @@ class TesseractEbayExtractor:
             self._save_results()
             return
         
-        self._process_images(images, delay, retry_errors)
+        self._process_images(images, delay, retry_errors, max_images)
     
-    def process_website(self, url: str, delay: float = 1.0, retry_errors: bool = True):
+    def process_website(self, url: str, delay: float = 1.0, retry_errors: bool = True, max_images: any = "all"):
         """Process all images from the website"""
         images = self.scrape_cloudinary_images(url)
         
@@ -342,16 +342,25 @@ class TesseractEbayExtractor:
             self._save_results()
             return
         
-        self._process_images(images, delay, retry_errors)
+        self._process_images(images, delay, retry_errors, max_images)
     
-    def _process_images(self, images: List[Dict[str, str]], delay: float, retry_errors: bool):
+    def _process_images(self, images: List[Dict[str, str]], delay: float, retry_errors: bool, max_images: any = "all"):
         """Common processing logic for images"""
-        logging.info(f"Processing {len(images)} images...")
+        # Determine how many images to process
+        total_available = len(images)
+        
+        if max_images == "all":
+            images_to_process = images
+            logging.info(f"Processing ALL {total_available} images...")
+        else:
+            max_count = int(max_images)
+            images_to_process = images[:max_count]
+            logging.info(f"Processing {len(images_to_process)} images (limited from {total_available} total)...")
         
         # Process each image
-        for i, img_data in enumerate(images):
+        for i, img_data in enumerate(images_to_process):
             try:
-                logging.info(f"Processing {i+1}/{len(images)}: {img_data['item_id']}")
+                logging.info(f"Processing {i+1}/{len(images_to_process)}: {img_data['item_id']}")
                 
                 result = self.extract_from_image_url(
                     img_data['image_url'], 
@@ -444,6 +453,14 @@ class TesseractEbayExtractor:
 
 
 if __name__ == "__main__":
+    # ========================================
+    # CONFIGURATION
+    # ========================================
+    MAX_IMAGES_TO_PROCESS = 20  # Set to a number (e.g., 20) for testing, or "all" for full processing
+    DELAY_BETWEEN_IMAGES = 0.5  # Delay in seconds between processing images
+    RETRY_FAILED_EXTRACTIONS = True  # Whether to retry failed extractions
+    # ========================================
+    
     # Initialize extractor
     extractor = TesseractEbayExtractor(output_file="data/EbayListings.json")
     
@@ -452,14 +469,16 @@ if __name__ == "__main__":
         logging.info("Found data/eBaySales.json, loading from there...")
         extractor.process_from_json(
             json_file="data/eBaySales.json",
-            delay=0.5,
-            retry_errors=True
+            delay=DELAY_BETWEEN_IMAGES,
+            retry_errors=RETRY_FAILED_EXTRACTIONS,
+            max_images=MAX_IMAGES_TO_PROCESS
         )
     else:
         # Fallback to scraping website
         logging.info("No eBaySales.json found, scraping website...")
         extractor.process_website(
             url="http://www.alkalinetrioarchive.com/sales.html",
-            delay=0.5,
-            retry_errors=True
+            delay=DELAY_BETWEEN_IMAGES,
+            retry_errors=RETRY_FAILED_EXTRACTIONS,
+            max_images=MAX_IMAGES_TO_PROCESS
         )
