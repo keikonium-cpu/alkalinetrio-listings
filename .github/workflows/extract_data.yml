@@ -1,0 +1,68 @@
+name: Extract eBay Data with Tesseract
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday at midnight
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'extract_ebay_data.py'
+
+jobs:
+  extract-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr libtesseract-dev
+        
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install pytesseract opencv-python-headless pillow requests beautifulsoup4 numpy
+        
+    - name: Run extraction script
+      run: |
+        python extract_ebay_data.py
+      continue-on-error: true  # Continue even if some extractions fail
+        
+    - name: Upload results as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ebay-data-${{ github.run_number }}
+        path: |
+          data/EbayListings.json
+          extraction.log
+        retention-days: 90
+        
+    - name: Commit results to repository
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add data/EbayListings.json
+        git add extraction.log
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update eBay data extraction - $(date +'%Y-%m-%d %H:%M:%S')"
+        git push
+      continue-on-error: true
+    
+    - name: Upload to server via FTP (optional)
+      if: success()
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./data/
+        server-dir: /data/
+        dangerous-clean-slate: false
+      continue-on-error: true
