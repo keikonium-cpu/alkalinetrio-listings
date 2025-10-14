@@ -44,7 +44,7 @@ def ocr_extract_text(image_url):
         'apikey': OCR_API_KEY,
         'url': image_url,
         'language': 'eng',
-        'isOverlayRequired': 'false'
+        'isOverlayRequired': 'true'  # Changed to true to get overlay with lines
     }
     response = requests.get(ocr_url, params=params)
     if response.status_code != 200:
@@ -54,24 +54,66 @@ def ocr_extract_text(image_url):
     if result.get('OCRExitCode') != 1:
         raise Exception(f'OCR failed: {result.get("ErrorMessage")}')
     
-    return result['ParsedResults'][0]['ParsedText'].strip()
+    return result
 
 # Step 3: Parse OCR text to structured dict
-def parse_ocr_to_json(raw_text, url, public_id):
-    clean_text = re.sub(r'\s+', ' ', raw_text).strip()
+def parse_ocr_to_json(ocr_result, url, public_id):
+    try:
+        lines = ocr_result['ParsedResults'][0]['Overlay']['Lines']
+    except KeyError:
+        return {
+            "sold_date": "N/A",
+            "title": "N/A",
+            "sold_price": "N/A",
+            "seller_id": "N/A",
+            "url": url,
+            "timestamp": datetime.utcnow().isoformat() + 'Z',
+            "publicId": public_id.split('/')[-1]
+        }
     
-    sold_date_match = re.search(r'Sold\s+(\w{3}\s+\d{1,2},\s+\d{4})', clean_text, re.IGNORECASE)
-    title_match = re.search(r'([A-Z0-9& ]+?)(?:\s*-\s*|\s*\(Black Vinyl|\s*Brand New)', clean_text, re.IGNORECASE)
-    price_match = re.search(r'\$(\d+\.\d{2})', clean_text)
-    seller_match = re.search(r'(\w+)\s+100% positive|\s+seller:\s*(\w+)', clean_text, re.IGNORECASE)
+    sold_date = None
+    title = ""
+    sold_price = None
+    seller_id = None
+    in_title = False
+    
+    for line in lines:
+        text = line['LineText'].strip()
+        if not text:
+            continue
+        
+        if sold_date is None and text.startswith('Sold '):
+            sold_date = text.replace('Sold ', '', 1)
+            in_title = True
+            continue
+        
+        if in_title and sold_price is None:
+            if text.startswith('$'):
+                sold_price = text.split()[0] if ' ' in text else text  # Take only the price if more on line
+                in_title = False
+            elif len(text) > 20 and not text.lower().startswith('brand new'):  # Assume title is long, skip "Brand New" or short artifacts
+                if title:
+                    title += ' ' + text
+                else:
+                    title = text
+            continue  # Skip short lines or condition like "Brand New"
+        
+        if '% positive' in text.lower():
+            # Extract seller_id: characters before the percentage, matching allowed chars
+            seller_match = re.match(r'([a-zA-Z0-9._-]+)\s+\d{1,3}(\.\d+)?%\s+positive', text, re.IGNORECASE)
+            if seller_match:
+                seller_id = seller_match.group(1)
+    
+    # If multiple prices, we took the first one starting with $
+    # For seller, assumed on its own line or shared
     
     now = datetime.utcnow().isoformat() + 'Z'
     
     return {
-        "sold_date": sold_date_match.group(1) if sold_date_match else "N/A",
-        "title": title_match.group(1).strip() if title_match else "N/A",
-        "sold_price": price_match.group(1) if price_match else "N/A",
-        "seller_id": (seller_match.group(1) or seller_match.group(2)) if seller_match else "N/A",
+        "sold_date": sold_date or "N/A",
+        "title": title or "N/A",
+        "sold_price": sold_price or "N/A",
+        "seller_id": seller_id or "N/A",
         "url": url,
         "timestamp": now,
         "publicId": public_id.split('/')[-1]
@@ -94,8 +136,8 @@ def main():
     results = []
     for url, public_id in images:
         try:
-            raw_text = ocr_extract_text(url)
-            parsed = parse_ocr_to_json(raw_text, url, public_id)
+            raw_ocr = ocr_extract_text(url)
+            parsed = parse_ocr_to_json(raw_ocr, url, public_id)
             results.append(parsed)
             print(f'Processed: {public_id}')
         except Exception as e:
