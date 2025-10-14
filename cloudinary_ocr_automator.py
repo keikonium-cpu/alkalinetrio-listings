@@ -17,7 +17,7 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 10
+MAX_RESULTS = 100
 OCR_TIMEOUT = 30  # Timeout in seconds for OCR requests
 
 # Step 1: List images from Cloudinary
@@ -135,4 +135,36 @@ def main():
         try:
             start_time = time.time()
             raw_ocr = ocr_extract_text(url)
-            parsed = parse_ocr_to_json(raw_ocr, url,
+            parsed = parse_ocr_to_json(raw_ocr, url, public_id)  # Fixed: Added missing closing parenthesis and public_id
+            results.append(parsed)
+            print(f"Processed {public_id} in {time.time() - start_time:.2f} seconds.")
+        except Exception as e:
+            print(f"Error processing {url}: {e}")
+    
+    # Save to local JSON file
+    output_path = 'data/processed_listings.json'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=4)
+    print(f"Saved to {output_path}")
+
+    # Upload to FTP server
+    remote_path = 'public_html/data/processed_listings.json'
+    try:
+        upload_to_ftp(output_path, remote_path)
+    except Exception as e:
+        print(f"FTP upload failed: {e}")
+
+    # Commit and push to GitHub
+    try:
+        subprocess.run(['git', 'config', '--global', 'user.name', 'GitHub Action'], check=True)
+        subprocess.run(['git', 'config', '--global', 'user.email', 'action@github.com'], check=True)
+        subprocess.run(['git', 'add', output_path], check=True)
+        subprocess.run(['git', 'commit', '-m', f'Update processed_listings.json at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'], check=True)
+        subprocess.run(['git', 'push', 'origin', 'main'], check=True)
+        print('Committed and pushed to GitHub')
+    except subprocess.CalledProcessError as e:
+        print(f'Git error: {e}, continuing without commit')
+
+if __name__ == '__main__':
+    main()
