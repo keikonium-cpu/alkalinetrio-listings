@@ -16,7 +16,7 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 10
+MAX_RESULTS = 100
 
 # Step 1: List images from Cloudinary
 def list_cloudinary_images():
@@ -44,7 +44,7 @@ def ocr_extract_text(image_url):
         'apikey': OCR_API_KEY,
         'url': image_url,
         'language': 'eng',
-        'isOverlayRequired': 'true'  # Changed to true to get overlay with lines
+        'isOverlayRequired': 'true'
     }
     response = requests.get(ocr_url, params=params)
     if response.status_code != 200:
@@ -72,10 +72,9 @@ def parse_ocr_to_json(ocr_result, url, public_id):
         }
     
     sold_date = None
-    title = ""
+    title_lines = []
     sold_price = None
     seller_id = None
-    in_title = False
     
     for line in lines:
         text = line['LineText'].strip()
@@ -84,28 +83,17 @@ def parse_ocr_to_json(ocr_result, url, public_id):
         
         if sold_date is None and text.startswith('Sold '):
             sold_date = text.replace('Sold ', '', 1)
-            in_title = True
-            continue
-        
-        if in_title and sold_price is None:
-            if text.startswith('$'):
-                sold_price = text.split()[0] if ' ' in text else text  # Take only the price if more on line
-                in_title = False
-            elif len(text) > 20 and not text.lower().startswith('brand new'):  # Assume title is long, skip "Brand New" or short artifacts
-                if title:
-                    title += ' ' + text
-                else:
-                    title = text
-            continue  # Skip short lines or condition like "Brand New"
-        
-        if '% positive' in text.lower():
-            # Extract seller_id: characters before the percentage, matching allowed chars
+        elif sold_date and sold_price is None and not text.startswith('$'):
+            if text.lower() != 'brand new':  # Skip condition line
+                title_lines.append(text)
+        elif sold_price is None and text.startswith('$'):
+            sold_price = re.match(r'^\$[\d\.]+', text).group(0)  # Take only the price (e.g., $69.99)
+        elif '% positive' in text.lower():
             seller_match = re.match(r'([a-zA-Z0-9._-]+)\s+\d{1,3}(\.\d+)?%\s+positive', text, re.IGNORECASE)
             if seller_match:
                 seller_id = seller_match.group(1)
     
-    # If multiple prices, we took the first one starting with $
-    # For seller, assumed on its own line or shared
+    title = ' '.join(title_lines).strip() if title_lines else "N/A"
     
     now = datetime.utcnow().isoformat() + 'Z'
     
