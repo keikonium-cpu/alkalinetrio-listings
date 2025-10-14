@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 
 def fetch_all_image_urls(base_url):
-    """Fetch image URLs from the first page, limited to the first 10 images for testing."""
+    """Fetch image URLs from the first page."""
     try:
         chrome_options = Options()
         chrome_options.add_argument("--headless")
@@ -33,19 +33,19 @@ def fetch_all_image_urls(base_url):
         driver.get(url)
         
         try:
-            wait = WebDriverWait(driver, 60)  # Increased timeout
+            wait = WebDriverWait(driver, 60)
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gallery-item")))
-            time.sleep(10)  # Increased sleep
+            time.sleep(10)
             
-            # Wait until at least 10 gallery items or max available
+            # Wait until at least some gallery items are available
             try:
-                wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "gallery-item")) >= 10)
+                wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "gallery-item")) >= 5)
             except:
-                print("Timeout waiting for 10 items, proceeding with available.")
+                print("Timeout waiting for items, proceeding with available.")
             
             html = driver.page_source
             soup = BeautifulSoup(html, 'html.parser')
-            gallery_elements = soup.find_all('div', class_='gallery-item', limit=10)
+            gallery_elements = soup.find_all('div', class_='gallery-item')
             
             if len(gallery_elements) == 0:
                 print(f"No gallery items found on page {page}. Stopping.")
@@ -93,21 +93,29 @@ def preprocess_image(image):
     # Adaptive threshold
     thresh = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
     
-    # Denoise
-    denoised = cv2.bilateralFilter(thresh, 9, 75, 75)
-    
-    return Image.fromarray(denoised)
+    return Image.fromarray(thresh)
 
 def clean_ocr_text(text):
-    """Clean common OCR errors."""
-    text = text.replace('Il', '11').replace('l', '1').replace('I', '1')
-    text = text.replace('O', '0').replace('o', '0')  # Careful with this
+    """Clean common OCR errors - less aggressive approach."""
+    # Only fix obvious OCR errors that affect key fields
+    text = text.replace('Il', '11').replace('|', '1')
+    
+    # Be very careful with letter/number replacements
+    # Only replace when it's clearly wrong in context
+    text = re.sub(r'([A-Za-z])0([A-Za-z])', r'\1o\2', text)  # o between letters
+    text = re.sub(r'^0', 'O', text)  # O at start of line
+    text = re.sub(r'([a-z])0', r'\1o', text)  # o after lowercase
+    text = re.sub(r'0([a-z])', r'o\1', text)  # o before lowercase
+    
+    text = re.sub(r'([A-Z])1([A-Z])', r'\1l\2', text)  # l between uppercase
+    text = re.sub(r'1([a-z])', r'l\1', text)  # l before lowercase
+    
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)  # Remove non-ASCII
     text = re.sub(r'\s+', ' ', text)  # Normalize spaces
-    return text
+    return text.strip()
 
-def extract_ebay_listings(image_url):
-    """Extract eBay listings from the full image."""
+def extract_ebay_listings(image_url, img_id):
+    """Extract eBay listings from the full image using simpler parsing."""
     try:
         response = requests.get(image_url)
         response.raise_for_status()
@@ -116,15 +124,17 @@ def extract_ebay_listings(image_url):
         # Preprocess the image
         processed_img = preprocess_image(img)
         
-        # Perform OCR with custom config
-        custom_config = r'--oem 3 --psm 4'  # Changed to psm 4 for single column of varying text
+        # Perform OCR with custom config for better text recognition
+        custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$.,%()-\'"& '
         text = pytesseract.image_to_string(processed_img, config=custom_config)
+        
+        # Clean the text
         cleaned_text = clean_ocr_text(text)
         
         lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
         
-        print(f"  OCR raw text: {text}")
-        print(f"  OCR cleaned text: {cleaned_text}")
+        print(f"  OCR raw text: {text[:200]}...")
+        print(f"  OCR cleaned text: {cleaned_text[:200]}...")
         print(f"  OCR: {len(lines)} lines")
         
         listings = []
@@ -133,111 +143,73 @@ def extract_ebay_listings(image_url):
         while i < len(lines):
             line = lines[i]
             
-            # More flexible date matching
-            dm = re.match(r'^(Sold|Ended)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}', line, re.I)
-            if not dm:
+            # Look for sold date pattern
+            sold_match = re.match(r'^Sold\s+([A-Za-z]+\.?\s+\d{1,2},?\s+\d{4})', line)
+            if not sold_match:
                 i += 1
                 continue
             
-            listing = {
-                'status': dm.group(1).capitalize(),
-                'date': line,
-                'listing_title': '',
-                'sold_price': None,
-                'seller': None
-            }
-            
-            print(f"    [{listing['status']}] {line}")
+            # Found a sold listing
+            sold_date = sold_match.group(1)
+            print(f"    Found sold date: {sold_date}")
             i += 1
             
-            # Extract title with more flexibility
-            title_parts = []
-            while i < len(lines) and len(title_parts) < 5:
-                cur = lines[i]
-                
-                if re.match(r'^(Brand New|Pre-Owned|New with tags|Open box|Used|For parts|New)$', cur, re.I):
-                    print(f"      Condition: {cur}")
-                    i += 1
-                    break
-                
-                if re.match(r'^\$\d+', cur):
-                    print(f"      Price line: {cur}")
-                    break
-                
-                if re.match(r'^(\d+\s*(bid|watcher)|or Best|Buy It Now|Located|View|Sell|Free|Watch|\+\$)', cur, re.I):
-                    i += 1
-                    continue
-                
-                # Skip short garbage lines
-                if len(cur) < 3:
-                    i += 1
-                    continue
-                
-                if re.search(r'[a-zA-Z]{3,}', cur):
-                    # Clean garbage like '(eae '
-                    cur = re.sub(r'^\W+', '', cur)  # Remove leading non-word
-                    cur = re.sub(r'\W+$', '', cur)  # Remove trailing
-                    title_parts.append(cur)
-                    print(f"      Title: {cur}")
-                
+            # Extract title - next non-empty line(s) until we hit a price
+            title_lines = []
+            while i < len(lines) and not re.match(r'^\$', lines[i]):
+                current_line = lines[i].strip()
+                # Skip condition lines and other metadata
+                if not re.match(r'^(Brand New|Pre-Owned|New|Used|For parts|or Best Offer|Buy It Now|Located in|View similar|Sell one|Extra)', current_line, re.I):
+                    if current_line and len(current_line) > 3:  # Minimum title length
+                        title_lines.append(current_line)
                 i += 1
             
-            listing['listing_title'] = ' '.join(title_parts).strip()
+            title = ' '.join(title_lines).strip()
+            print(f"    Title: {title}")
             
-            # Extract price
-            for _ in range(8):
+            # Extract price - look for $ pattern
+            price = None
+            seller_id = None
+            
+            while i < len(lines) and (not price or not seller_id):
+                current_line = lines[i]
+                
+                # Look for price
+                if not price:
+                    price_match = re.search(r'\$(\d+\.?\d{0,2})', current_line)
+                    if price_match:
+                        price = price_match.group(1)
+                        print(f"    Price: ${price}")
+                
+                # Look for seller ID - alphanumeric with possible .-_ before percentage
+                if not seller_id:
+                    # Look for pattern: seller_id followed by percentage
+                    seller_match = re.search(r'([a-zA-Z0-9._-]+)\s+\d+\.?\d*\s*%', current_line)
+                    if seller_match:
+                        seller_id = seller_match.group(1)
+                        print(f"    Seller: {seller_id}")
+                
+                i += 1
                 if i >= len(lines):
                     break
-                cur = lines[i]
-                pm = re.search(r'\$(\d+[\d,]*\.?\d{0,2})', cur)
-                if pm:
-                    listing['sold_price'] = f"${pm.group(1)}"
-                    print(f"      Price: {listing['sold_price']}")
-                    i += 1
-                    break
-                i += 1
             
-            # Extract seller
-            for _ in range(8):
-                if i >= len(lines):
-                    break
-                cur = lines[i]
-                
-                if re.match(r'^(Sold|Ended)\s+', cur, re.I):
-                    break
-                
-                sm = re.search(r'([a-zA-Z0-9_-]+)\s*(\d+\.?\d*)\s*%?\s*positive?', cur, re.I)
-                if sm:
-                    seller = sm.group(1)
-                    seller = re.sub(r'^(Pre|Brand|New|Ouinect|Oninect)', '', seller, flags=re.I)
-                    if len(seller) > 2:
-                        listing['seller'] = seller
-                        print(f"      Seller: {listing['seller']}")
-                        i += 1
-                        break
-                
-                username_pattern = r'^[a-zA-Z][a-zA-Z0-9_-]{2,}$'
-                if re.match(username_pattern, cur):
-                    if i + 1 < len(lines):
-                        next_line = lines[i + 1]
-                        if re.search(r'^\d+\.?\d*\s*%?', next_line):
-                            listing['seller'] = cur
-                            print(f"      Seller: {listing['seller']}")
-                            i += 2
-                            break
-                
-                i += 1
-            
-            if listing['listing_title'] and listing['sold_price']:
-                listing['listing_title'] = re.sub(r'\s{2,}', ' ', listing['listing_title']).strip()
+            # Only add if we have the essential fields
+            if title and price:
+                listing = {
+                    'sold_date': sold_date,
+                    'title': title,
+                    'sold_price': price,
+                    'seller_id': seller_id,
+                    'url': image_url,
+                    'timestamp': datetime.now().isoformat() + 'Z',
+                    'publicId': img_id
+                }
                 listings.append(listing)
-                print(f"    ✓ Saved")
+                print(f"    ✓ Saved listing")
             else:
                 missing = []
-                if not listing['listing_title']:
-                    missing.append('title')
-                if not listing['sold_price']:
-                    missing.append('price')
+                if not title: missing.append('title')
+                if not price: missing.append('price')
                 print(f"    ✗ Missing: {', '.join(missing)}")
         
         print(f"  ✓ Found {len(listings)} listings")
@@ -265,9 +237,9 @@ def update_listings():
         with open(output_json, 'r') as f:
             data = json.load(f)
             all_listings = data
-            existing_ids = {item.get('image_id', '') for item in data}
+            existing_ids = {item.get('publicId', '') for item in data}
             for item in data:
-                combo = f"{item.get('listing_title', '')}|{item.get('sold_price', '')}"
+                combo = f"{item.get('title', '')}|{item.get('sold_price', '')}|{item.get('seller_id', '')}"
                 existing_combos.add(combo)
     
     print(f"Loaded {len(all_listings)} existing listings\n")
@@ -284,16 +256,14 @@ def update_listings():
         if img_id not in existing_ids:
             processed += 1
             print(f"[{processed}] Processing: {img_id}")
-            listings = extract_ebay_listings(img_url)
+            listings = extract_ebay_listings(img_url, img_id)
             for listing in listings:
-                combo = f"{listing['listing_title']}|{listing['sold_price']}"
+                combo = f"{listing['title']}|{listing['sold_price']}|{listing.get('seller_id', '')}"
                 if combo in existing_combos:
                     duplicates += 1
                     print(f"    ⚠ Duplicate skipped")
                     continue
                 
-                listing['image_id'] = img_id
-                listing['processed_at'] = datetime.now().isoformat()
                 new_listings.append(listing)
                 existing_combos.add(combo)
             existing_ids.add(img_id)
@@ -304,7 +274,7 @@ def update_listings():
     
     if new_listings:
         all_listings.extend(new_listings)
-        print(f"\n✓ Added {len(new_listings)} new. Total: {len(all_listings)}")
+        print(f"\n✓ Added {len(new_listings)} new listings. Total: {len(all_listings)}")
         if duplicates > 0:
             print(f"  Skipped {duplicates} duplicates")
     else:
@@ -313,7 +283,7 @@ def update_listings():
             print(f"  Skipped {duplicates} duplicates")
     
     with open(output_json, 'w') as f:
-        json.dump(all_listings, f, indent=4)
+        json.dump(all_listings, f, indent=2)
     
     print(f"✓ Saved to {output_json}")
     return len(new_listings) > 0
