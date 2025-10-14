@@ -33,16 +33,19 @@ def fetch_all_image_urls(base_url):
         driver.get(url)
         
         try:
-            wait = WebDriverWait(driver, 30)
+            wait = WebDriverWait(driver, 60)  # Increased timeout
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gallery-item")))
-            time.sleep(5)  # Increased sleep to ensure full loading
+            time.sleep(10)  # Increased sleep
             
-            # Wait until at least 10 gallery items are present (for testing)
-            wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "gallery-item")) >= 10)
+            # Wait until at least 10 gallery items or max available
+            try:
+                wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "gallery-item")) >= 10)
+            except:
+                print("Timeout waiting for 10 items, proceeding with available.")
             
             html = driver.page_source
             soup = BeautifulSoup(html, 'html.parser')
-            gallery_elements = soup.find_all('div', class_='gallery-item', limit=10)  # Limit to first 10 images
+            gallery_elements = soup.find_all('div', class_='gallery-item', limit=10)
             
             if len(gallery_elements) == 0:
                 print(f"No gallery items found on page {page}. Stopping.")
@@ -78,8 +81,30 @@ def preprocess_image(image):
     """Preprocess image for better OCR accuracy."""
     img_array = np.array(image)
     gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    return Image.fromarray(thresh)
+    
+    # Apply CLAHE for contrast enhancement
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    enhanced = clahe.apply(gray)
+    
+    # Sharpen the image
+    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+    sharpened = cv2.filter2D(enhanced, -1, kernel)
+    
+    # Adaptive threshold
+    thresh = cv2.adaptiveThreshold(sharpened, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    
+    # Denoise
+    denoised = cv2.bilateralFilter(thresh, 9, 75, 75)
+    
+    return Image.fromarray(denoised)
+
+def clean_ocr_text(text):
+    """Clean common OCR errors."""
+    text = text.replace('Il', '11').replace('l', '1').replace('I', '1')
+    text = text.replace('O', '0').replace('o', '0')  # Careful with this
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)  # Remove non-ASCII
+    text = re.sub(r'\s+', ' ', text)  # Normalize spaces
+    return text
 
 def extract_ebay_listings(image_url):
     """Extract eBay listings from the full image."""
@@ -92,11 +117,14 @@ def extract_ebay_listings(image_url):
         processed_img = preprocess_image(img)
         
         # Perform OCR with custom config
-        custom_config = r'--oem 3 --psm 6'
+        custom_config = r'--oem 3 --psm 4'  # Changed to psm 4 for single column of varying text
         text = pytesseract.image_to_string(processed_img, config=custom_config)
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        cleaned_text = clean_ocr_text(text)
+        
+        lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
         
         print(f"  OCR raw text: {text}")
+        print(f"  OCR cleaned text: {cleaned_text}")
         print(f"  OCR: {len(lines)} lines")
         
         listings = []
@@ -105,7 +133,7 @@ def extract_ebay_listings(image_url):
         while i < len(lines):
             line = lines[i]
             
-            # More flexible date matching (optional period after month, handle possible OCR errors)
+            # More flexible date matching
             dm = re.match(r'^(Sold|Ended)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}', line, re.I)
             if not dm:
                 i += 1
@@ -122,27 +150,33 @@ def extract_ebay_listings(image_url):
             print(f"    [{listing['status']}] {line}")
             i += 1
             
-            # Extract title
+            # Extract title with more flexibility
             title_parts = []
             while i < len(lines) and len(title_parts) < 5:
                 cur = lines[i]
                 
-                # Stop at condition (made more flexible)
                 if re.match(r'^(Brand New|Pre-Owned|New with tags|Open box|Used|For parts|New)$', cur, re.I):
                     print(f"      Condition: {cur}")
                     i += 1
                     break
-                # Stop at price
+                
                 if re.match(r'^\$\d+', cur):
                     print(f"      Price line: {cur}")
                     break
-                # Skip junk (added more patterns if needed)
+                
                 if re.match(r'^(\d+\s*(bid|watcher)|or Best|Buy It Now|Located|View|Sell|Free|Watch|\+\$)', cur, re.I):
                     i += 1
                     continue
                 
-                # Valid title
-                if len(cur) > 2 and re.search(r'[a-zA-Z]{3,}', cur):
+                # Skip short garbage lines
+                if len(cur) < 3:
+                    i += 1
+                    continue
+                
+                if re.search(r'[a-zA-Z]{3,}', cur):
+                    # Clean garbage like '(eae '
+                    cur = re.sub(r'^\W+', '', cur)  # Remove leading non-word
+                    cur = re.sub(r'\W+$', '', cur)  # Remove trailing
                     title_parts.append(cur)
                     print(f"      Title: {cur}")
                 
@@ -150,7 +184,7 @@ def extract_ebay_listings(image_url):
             
             listing['listing_title'] = ' '.join(title_parts).strip()
             
-            # Extract price (made more flexible)
+            # Extract price
             for _ in range(8):
                 if i >= len(lines):
                     break
@@ -169,15 +203,12 @@ def extract_ebay_listings(image_url):
                     break
                 cur = lines[i]
                 
-                # Stop if next listing
                 if re.match(r'^(Sold|Ended)\s+', cur, re.I):
                     break
                 
-                # Pattern 1: username with percentage on same line (more flexible)
                 sm = re.search(r'([a-zA-Z0-9_-]+)\s*(\d+\.?\d*)\s*%?\s*positive?', cur, re.I)
                 if sm:
                     seller = sm.group(1)
-                    # Clean common OCR errors
                     seller = re.sub(r'^(Pre|Brand|New|Ouinect|Oninect)', '', seller, flags=re.I)
                     if len(seller) > 2:
                         listing['seller'] = seller
@@ -185,7 +216,6 @@ def extract_ebay_listings(image_url):
                         i += 1
                         break
                 
-                # Pattern 2: username on one line, percentage on next
                 username_pattern = r'^[a-zA-Z][a-zA-Z0-9_-]{2,}$'
                 if re.match(username_pattern, cur):
                     if i + 1 < len(lines):
@@ -198,7 +228,6 @@ def extract_ebay_listings(image_url):
                 
                 i += 1
             
-            # Save if valid
             if listing['listing_title'] and listing['sold_price']:
                 listing['listing_title'] = re.sub(r'\s{2,}', ' ', listing['listing_title']).strip()
                 listings.append(listing)
