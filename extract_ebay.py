@@ -113,12 +113,10 @@ def extract_ebay_listings(image_url, img_id):
         
         print(f"  OCR raw text: {text}")
         print(f"  OCR cleaned text: {cleaned_text}")
-        print(f"  OCR lines: {cleaned_text.split('\n')}")
+        lines = cleaned_text.split('\n')  # Split outside f-string
+        print(f"  OCR lines: {lines}")
         
         listings = []
-        
-        # Split into lines for parsing
-        lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
         
         i = 0
         while i < len(lines):
