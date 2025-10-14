@@ -9,6 +9,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
+import requests
+from io import BytesIO
+from PIL import Image
+import pytesseract
+import cv2
+import numpy as np
 
 def fetch_all_image_urls(base_url):
     """Fetch image URLs from the first page, limited to the first 10 images for testing."""
@@ -29,7 +35,10 @@ def fetch_all_image_urls(base_url):
         try:
             wait = WebDriverWait(driver, 30)
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".gallery-item")))
-            time.sleep(2)
+            time.sleep(5)  # Increased sleep to ensure full loading
+            
+            # Wait until at least 10 gallery items are present (for testing)
+            wait.until(lambda d: len(d.find_elements(By.CLASS_NAME, "gallery-item")) >= 10)
             
             html = driver.page_source
             soup = BeautifulSoup(html, 'html.parser')
@@ -65,22 +74,29 @@ def fetch_all_image_urls(base_url):
             pass
         return {}
 
+def preprocess_image(image):
+    """Preprocess image for better OCR accuracy."""
+    img_array = np.array(image)
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    return Image.fromarray(thresh)
+
 def extract_ebay_listings(image_url):
     """Extract eBay listings from the full image."""
     try:
-        import requests
-        from io import BytesIO
-        from PIL import Image
-        import pytesseract
-        
         response = requests.get(image_url)
         response.raise_for_status()
         img = Image.open(BytesIO(response.content))
         
-        # Removed cropping, process full image
-        text = pytesseract.image_to_string(img)
+        # Preprocess the image
+        processed_img = preprocess_image(img)
+        
+        # Perform OCR with custom config
+        custom_config = r'--oem 3 --psm 6'
+        text = pytesseract.image_to_string(processed_img, config=custom_config)
         lines = [line.strip() for line in text.split('\n') if line.strip()]
         
+        print(f"  OCR raw text: {text}")
         print(f"  OCR: {len(lines)} lines")
         
         listings = []
@@ -89,8 +105,8 @@ def extract_ebay_listings(image_url):
         while i < len(lines):
             line = lines[i]
             
-            # Find date
-            dm = re.match(r'^(Sold|Ended)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}', line, re.I)
+            # More flexible date matching (optional period after month, handle possible OCR errors)
+            dm = re.match(r'^(Sold|Ended)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}', line, re.I)
             if not dm:
                 i += 1
                 continue
@@ -111,8 +127,8 @@ def extract_ebay_listings(image_url):
             while i < len(lines) and len(title_parts) < 5:
                 cur = lines[i]
                 
-                # Stop at condition
-                if re.match(r'^(Brand New|Pre-Owned|New with tags|Open box|Used|For parts)$', cur, re.I):
+                # Stop at condition (made more flexible)
+                if re.match(r'^(Brand New|Pre-Owned|New with tags|Open box|Used|For parts|New)$', cur, re.I):
                     print(f"      Condition: {cur}")
                     i += 1
                     break
@@ -120,7 +136,7 @@ def extract_ebay_listings(image_url):
                 if re.match(r'^\$\d+', cur):
                     print(f"      Price line: {cur}")
                     break
-                # Skip junk
+                # Skip junk (added more patterns if needed)
                 if re.match(r'^(\d+\s*(bid|watcher)|or Best|Buy It Now|Located|View|Sell|Free|Watch|\+\$)', cur, re.I):
                     i += 1
                     continue
@@ -134,7 +150,7 @@ def extract_ebay_listings(image_url):
             
             listing['listing_title'] = ' '.join(title_parts).strip()
             
-            # Extract price
+            # Extract price (made more flexible)
             for _ in range(8):
                 if i >= len(lines):
                     break
@@ -157,8 +173,8 @@ def extract_ebay_listings(image_url):
                 if re.match(r'^(Sold|Ended)\s+', cur, re.I):
                     break
                 
-                # Pattern 1: username with percentage on same line
-                sm = re.search(r'([a-zA-Z0-9_-]+)\s+(\d+\.?\d*)\s*%', cur, re.I)
+                # Pattern 1: username with percentage on same line (more flexible)
+                sm = re.search(r'([a-zA-Z0-9_-]+)\s*(\d+\.?\d*)\s*%?\s*positive?', cur, re.I)
                 if sm:
                     seller = sm.group(1)
                     # Clean common OCR errors
@@ -174,7 +190,7 @@ def extract_ebay_listings(image_url):
                 if re.match(username_pattern, cur):
                     if i + 1 < len(lines):
                         next_line = lines[i + 1]
-                        if re.search(r'^\d+\.?\d*\s*%', next_line):
+                        if re.search(r'^\d+\.?\d*\s*%?', next_line):
                             listing['seller'] = cur
                             print(f"      Seller: {listing['seller']}")
                             i += 2
@@ -207,7 +223,10 @@ def extract_ebay_listings(image_url):
 def update_listings():
     """Main function."""
     base_url = 'http://www.alkalinetrioarchive.com/sales.html'
-    output_json = 'ebaylistings.json'
+    output_dir = 'data'
+    output_json = os.path.join(output_dir, 'ebaylistings.json')
+    
+    os.makedirs(output_dir, exist_ok=True)
     
     existing_ids = set()
     all_listings = []
@@ -267,7 +286,7 @@ def update_listings():
     with open(output_json, 'w') as f:
         json.dump(all_listings, f, indent=4)
     
-    print(f"✓ Saved")
+    print(f"✓ Saved to {output_json}")
     return len(new_listings) > 0
 
 if __name__ == "__main__":
