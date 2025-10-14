@@ -97,7 +97,7 @@ def preprocess_image(image):
 
 def clean_ocr_text(text):
     """Clean common OCR errors - less aggressive approach."""
-    # Only fix obvious OCR errors that affect key fields
+    # Only fix obvious OCR errors
     text = text.replace('Il', '11').replace('|', '1')
     
     # Be very careful with letter/number replacements
@@ -124,8 +124,8 @@ def extract_ebay_listings(image_url, img_id):
         # Preprocess the image
         processed_img = preprocess_image(img)
         
-        # Perform OCR with custom config for better text recognition
-        custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$.,%()-\'"& '
+        # Perform OCR with simpler config (removed problematic whitelist)
+        custom_config = r'--oem 3 --psm 6'
         text = pytesseract.image_to_string(processed_img, config=custom_config)
         
         # Clean the text
