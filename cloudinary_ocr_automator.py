@@ -16,7 +16,7 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 100
+MAX_RESULTS = 10
 
 # Step 1: List images from Cloudinary
 def list_cloudinary_images():
