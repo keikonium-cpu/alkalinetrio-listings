@@ -6,6 +6,7 @@ import base64
 import os
 from ftplib import FTP
 import subprocess
+import time
 
 # Retrieve secrets from GitHub Actions environment variables
 CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
@@ -17,6 +18,7 @@ FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
 MAX_RESULTS = 500  # Cloudinary's max per request
+OCR_DELAY = 20  # Seconds to wait between OCR requests (180 per hour = 1 every 20 seconds)
 
 # Step 1: List ALL images from Cloudinary with pagination
 def list_cloudinary_images():
@@ -179,6 +181,37 @@ def load_existing_json(filepath):
         print(f'No existing JSON found at {filepath}, starting fresh.')
         return []
 
+# Step 6: Determine which images need processing
+def filter_images_to_process(all_images, existing_data):
+    """
+    Returns list of images that need OCR processing.
+    Includes:
+    - New images (not in existing data)
+    - Images with success status of "reprocess" or "fail"
+    """
+    # Create lookup dictionary by public_id
+    existing_dict = {entry.get('public_id'): entry for entry in existing_data if entry.get('public_id')}
+    
+    images_to_process = []
+    
+    for url, public_id in all_images:
+        pid = public_id.split('/')[-1]
+        
+        # Check if this image exists in our data
+        if pid not in existing_dict:
+            # New image - needs processing
+            images_to_process.append((url, public_id, 'new'))
+        else:
+            # Existing image - check success status
+            existing_entry = existing_dict[pid]
+            success_status = existing_entry.get('success', 'fail')
+            
+            if success_status in ['reprocess', 'fail']:
+                # Needs reprocessing
+                images_to_process.append((url, public_id, success_status))
+    
+    return images_to_process
+
 # Main automation
 def main():
     images = list_cloudinary_images()
@@ -188,57 +221,99 @@ def main():
     output_path = 'data/EbayListings.json'
     existing_data = load_existing_json(output_path)
     
-    # Create a set of already processed public_ids for fast lookup
-    processed_ids = {entry.get('public_id') for entry in existing_data if entry.get('public_id')}
-    print(f'Already processed: {len(processed_ids)} entries')
+    # Determine which images need processing
+    images_to_process = filter_images_to_process(images, existing_data)
     
-    # Filter out already processed images
-    new_images = [(url, pid) for url, pid in images if pid.split('/')[-1] not in processed_ids]
-    print(f'New images to process: {len(new_images)}')
+    # Count by status
+    new_count = sum(1 for _, _, status in images_to_process if status == 'new')
+    reprocess_count = sum(1 for _, _, status in images_to_process if status == 'reprocess')
+    fail_count = sum(1 for _, _, status in images_to_process if status == 'fail')
     
-    if len(new_images) == 0:
-        print('No new images to process. All images have already been extracted.')
+    print(f'\n=== Processing Plan ===')
+    print(f'Total images in Cloudinary: {len(images)}')
+    print(f'Already complete: {len(existing_data) - reprocess_count - fail_count}')
+    print(f'New images to process: {new_count}')
+    print(f'Failed to reprocess: {fail_count}')
+    print(f'Partial to reprocess: {reprocess_count}')
+    print(f'Total to process: {len(images_to_process)}')
+    
+    if len(images_to_process) == 0:
+        print('\n✓ All images have been successfully processed!')
         return
     
-    results = list(existing_data)  # Start with existing data
+    # Estimate time
+    estimated_minutes = (len(images_to_process) * OCR_DELAY) / 60
+    print(f'\nEstimated time: {estimated_minutes:.1f} minutes ({OCR_DELAY}s delay between requests)')
+    print(f'Rate limit: {3600 / OCR_DELAY:.0f} requests per hour\n')
+    
+    # Create lookup for existing data by public_id for easy updating
+    existing_dict = {entry.get('public_id'): entry for entry in existing_data if entry.get('public_id')}
+    
     success_count = 0
     failed_count = 0
+    reprocess_needed = 0
     
-    for url, public_id in new_images:
+    for idx, (url, public_id, reason) in enumerate(images_to_process, 1):
+        pid = public_id.split('/')[-1]
+        print(f'\n[{idx}/{len(images_to_process)}] Processing: {pid} (reason: {reason})')
+        
         try:
             raw_text = ocr_extract_text(url)
             parsed = parse_ocr_to_json(raw_text, url, public_id)
-            results.append(parsed)
             
-            # Check if critical fields were extracted
-            if parsed["sold_date"] and parsed["title"] and parsed["sold_price"]:
+            # Update or add to existing dict
+            existing_dict[pid] = parsed
+            
+            if parsed["success"] == "complete":
                 success_count += 1
-                print(f'✓ Successfully processed: {public_id}')
+                print(f'✓ Successfully extracted all fields')
+            elif parsed["success"] == "reprocess":
+                reprocess_needed += 1
+                print(f'⚠ Partial extraction - will reprocess next run')
             else:
                 failed_count += 1
-                print(f'✗ Failed to extract all fields: {public_id}')
+                print(f'✗ Failed to extract fields')
                 
         except Exception as e:
             failed_count += 1
-            print(f'✗ Error processing {url}: {e}')
-            # Add failed entry with minimal info
-            results.append({
+            error_msg = str(e)
+            print(f'✗ Error: {error_msg}')
+            
+            # Add/update failed entry
+            existing_dict[pid] = {
+                "success": "fail",
                 "sold_date": None,
-                "title": "Error extracting",
+                "title": f"Error: {error_msg[:50]}",
                 "sold_price": None,
                 "seller": None,
                 "image_url": url,
                 "processed_at": datetime.utcnow().isoformat() + 'Z',
-                "public_id": public_id.split('/')[-1]
-            })
+                "public_id": pid
+            }
+        
+        # Rate limiting: wait between requests (except on last item)
+        if idx < len(images_to_process):
+            print(f'Waiting {OCR_DELAY} seconds before next request...')
+            time.sleep(OCR_DELAY)
+    
+    # Convert dict back to list for JSON output
+    results = list(existing_dict.values())
     
     print(f'\n=== Processing Summary ===')
-    print(f'Total images found: {len(images)}')
-    print(f'Already processed: {len(processed_ids)}')
-    print(f'New images processed: {len(new_images)}')
-    print(f'Successfully extracted: {success_count}')
-    print(f'Failed extractions: {failed_count}')
     print(f'Total entries in JSON: {len(results)}')
+    print(f'Successfully completed: {success_count}')
+    print(f'Need reprocessing: {reprocess_needed}')
+    print(f'Failed: {failed_count}')
+    
+    # Calculate overall stats
+    complete_total = sum(1 for r in results if r.get('success') == 'complete')
+    reprocess_total = sum(1 for r in results if r.get('success') == 'reprocess')
+    fail_total = sum(1 for r in results if r.get('success') == 'fail')
+    
+    print(f'\n=== Overall Stats ===')
+    print(f'Complete: {complete_total}')
+    print(f'Need reprocessing: {reprocess_total}')
+    print(f'Failed: {fail_total}')
     
     # Save to local JSON file
     output_path = 'data/EbayListings.json'
