@@ -16,7 +16,7 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 20
+MAX_RESULTS = 50
 
 # Step 1: List images from Cloudinary
 def list_cloudinary_images():
@@ -131,22 +131,58 @@ def upload_to_ftp(local_path, remote_path):
         print(f'FTP upload error: {e}')
         raise
 
+# Step 5: Load existing JSON data
+def load_existing_json(filepath):
+    """Load existing JSON file if it exists, return empty list if not."""
+    # Ensure data directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f'Loaded {len(data)} existing entries from {filepath}')
+                return data
+        except Exception as e:
+            print(f'Error loading existing JSON: {e}')
+            return []
+    else:
+        print(f'No existing JSON found at {filepath}, starting fresh.')
+        return []
+
 # Main automation
 def main():
     images = list_cloudinary_images()
-    print(f'Found {len(images)} images to process.')
+    print(f'Found {len(images)} images from Cloudinary.')
     
-    results = []
+    # Load existing data
+    output_path = 'data/EbayListings.json'
+    existing_data = load_existing_json(output_path)
+    
+    # Create a set of already processed public_ids for fast lookup
+    processed_ids = {entry.get('public_id') for entry in existing_data if entry.get('public_id')}
+    print(f'Already processed: {len(processed_ids)} entries')
+    
+    # Filter out already processed images
+    new_images = [(url, pid) for url, pid in images if pid.split('/')[-1] not in processed_ids]
+    print(f'New images to process: {len(new_images)}')
+    
+    if len(new_images) == 0:
+        print('No new images to process. All images have already been extracted.')
+        return
+    
+    results = list(existing_data)  # Start with existing data
     success_count = 0
     failed_count = 0
     
-    for url, public_id in images:
+    for url, public_id in new_images:
         try:
             raw_text = ocr_extract_text(url)
             parsed = parse_ocr_to_json(raw_text, url, public_id)
             results.append(parsed)
             
-            if parsed["success"]:
+            # Check if critical fields were extracted
+            if parsed["sold_date"] and parsed["title"] and parsed["sold_price"]:
                 success_count += 1
                 print(f'✓ Successfully processed: {public_id}')
             else:
@@ -156,28 +192,30 @@ def main():
         except Exception as e:
             failed_count += 1
             print(f'✗ Error processing {url}: {e}')
-            # Add failed entry
+            # Add failed entry with minimal info
             results.append({
-                "success": False,
-                "error": str(e),
+                "sold_date": None,
+                "title": "Error extracting",
+                "sold_price": None,
+                "seller": None,
                 "image_url": url,
-                "public_id": public_id.split('/')[-1],
-                "processed_at": datetime.utcnow().isoformat() + 'Z'
+                "processed_at": datetime.utcnow().isoformat() + 'Z',
+                "public_id": public_id.split('/')[-1]
             })
     
-    print(f'\n=== Summary ===')
-    print(f'Total: {len(images)}')
-    print(f'Success: {success_count}')
-    print(f'Failed: {failed_count}')
-    
-    # Ensure data directory exists
-    os.makedirs('data', exist_ok=True)
+    print(f'\n=== Processing Summary ===')
+    print(f'Total images found: {len(images)}')
+    print(f'Already processed: {len(processed_ids)}')
+    print(f'New images processed: {len(new_images)}')
+    print(f'Successfully extracted: {success_count}')
+    print(f'Failed extractions: {failed_count}')
+    print(f'Total entries in JSON: {len(results)}')
     
     # Save to local JSON file
     output_path = 'data/EbayListings.json'
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
-    print(f'\nSaved to {output_path}')
+    print(f'\nSaved {len(results)} total entries to {output_path}')
 
     # Upload to FTP server
     try:
@@ -191,7 +229,9 @@ def main():
         subprocess.run(['git', 'config', '--global', 'user.name', 'GitHub Action'], check=True)
         subprocess.run(['git', 'config', '--global', 'user.email', 'action@github.com'], check=True)
         subprocess.run(['git', 'add', output_path], check=True)
-        subprocess.run(['git', 'commit', '-m', f'Update EbayListings.json - {success_count} success, {failed_count} failed at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'], check=True)
+        
+        commit_message = f'Update EbayListings.json - Added {len(new_images)} new entries ({success_count} success, {failed_count} failed) at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
         subprocess.run(['git', 'push', 'origin', 'main'], check=True)
         print('Committed and pushed to GitHub')
     except subprocess.CalledProcessError as e:
