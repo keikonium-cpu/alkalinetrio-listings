@@ -134,15 +134,28 @@ def parse_ocr_to_json(raw_text, url, public_id):
     
     now = datetime.utcnow().isoformat() + 'Z'
     
+    # Determine success status based on critical fields
+    sold_date = sold_date_match.group(1) if sold_date_match else None
+    title = title_match.group(1).strip() if title_match else None
+    sold_price = price_match.group(1) if price_match else None
+    seller = seller_match.group(1) if seller_match else None
+    
+    # Set success status
+    if sold_date and title and sold_price:
+        success_status = "Complete"
+    else:
+        success_status = "Reprocess"
+    
     # Build result - only include fields needed for website
     result = {
-        "sold_date": sold_date_match.group(1) if sold_date_match else None,
-        "title": title_match.group(1).strip() if title_match else None,
-        "sold_price": price_match.group(1) if price_match else None,
-        "seller": seller_match.group(1) if seller_match else None,
+        "sold_date": sold_date,
+        "title": title,
+        "sold_price": sold_price,
+        "seller": seller,
         "image_url": url,
         "processed_at": now,
-        "public_id": public_id.split('/')[-1]
+        "public_id": public_id.split('/')[-1],
+        "success": success_status
     }
     
     return result
