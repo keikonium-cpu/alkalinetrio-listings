@@ -156,7 +156,7 @@ def main():
     print(f'Found {len(images)} images from Cloudinary.')
     
     # Load existing data
-    output_path = 'data/EbayListings.json'
+    output_path = 'data/eBayListings.json'
     existing_data = load_existing_json(output_path)
     
     # Create a set of already processed public_ids for fast lookup
@@ -212,14 +212,14 @@ def main():
     print(f'Total entries in JSON: {len(results)}')
     
     # Save to local JSON file
-    output_path = 'data/EbayListings.json'
+    output_path = 'data/eBayListings.json'
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
     print(f'\nSaved {len(results)} total entries to {output_path}')
 
     # Upload to FTP server
     try:
-        remote_path = 'public_html/data/EbayListings.json'
+        remote_path = 'public_html/data/eBayListings.json'
         upload_to_ftp(output_path, remote_path)
     except Exception as e:
         print(f'Warning: FTP upload failed but continuing: {e}')
