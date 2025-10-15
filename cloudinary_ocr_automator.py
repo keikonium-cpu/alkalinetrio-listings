@@ -16,7 +16,7 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 10
+MAX_RESULTS = 20
 
 # Step 1: List images from Cloudinary
 def list_cloudinary_images():
@@ -105,23 +105,16 @@ def parse_ocr_to_json(raw_text, url, public_id):
     
     now = datetime.utcnow().isoformat() + 'Z'
     
-    # Build result with success indicators
+    # Build result - only include fields needed for website
     result = {
-        "success": True,
         "sold_date": sold_date_match.group(1) if sold_date_match else None,
         "title": title_match.group(1).strip() if title_match else None,
         "sold_price": price_match.group(1) if price_match else None,
         "seller": seller_match.group(1) if seller_match else None,
-        "item_id": item_id_match.group(1) if item_id_match else None,
         "image_url": url,
         "processed_at": now,
-        "public_id": public_id.split('/')[-1],
-        "raw_text": raw_text  # Store raw text for debugging
+        "public_id": public_id.split('/')[-1]
     }
-    
-    # Mark as failed if critical fields are missing
-    if not result["sold_date"] or not result["title"] or not result["sold_price"]:
-        result["success"] = False
     
     return result
 
