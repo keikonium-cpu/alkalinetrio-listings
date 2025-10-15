@@ -201,57 +201,97 @@ def main():
     output_path = 'data/eBayListings.json'
     existing_data = load_existing_json(output_path)
     
-    # Create a set of already processed public_ids for fast lookup
-    processed_ids = {entry.get('public_id') for entry in existing_data if entry.get('public_id')}
-    print(f'Already processed: {len(processed_ids)} entries')
+    # Create lookup dict by public_id for existing data
+    existing_by_id = {entry.get('public_id'): entry for entry in existing_data if entry.get('public_id')}
+    print(f'Loaded {len(existing_by_id)} existing entries')
     
-    # Filter out already processed images
-    new_images = [(url, pid) for url, pid in images if pid.split('/')[-1] not in processed_ids]
-    print(f'New images to process: {len(new_images)}')
+    # Separate entries by status
+    complete_ids = {pid for pid, entry in existing_by_id.items() if entry.get('success') == 'Complete'}
+    reprocess_ids = {pid for pid, entry in existing_by_id.items() if entry.get('success') == 'Reprocess'}
+    fail_ids = {pid for pid, entry in existing_by_id.items() if entry.get('success') == 'Fail'}
     
-    if len(new_images) == 0:
-        print('No new images to process. All images have already been extracted.')
+    print(f'Complete: {len(complete_ids)}, Reprocess: {len(reprocess_ids)}, Fail: {len(fail_ids)}')
+    
+    # Determine which images need processing
+    images_to_process = []
+    for url, pid in images:
+        public_id = pid.split('/')[-1]
+        if public_id in complete_ids:
+            # Skip Complete entries (including manual edits)
+            continue
+        elif public_id in reprocess_ids or public_id in fail_ids:
+            # Retry Reprocess and Fail entries
+            images_to_process.append((url, pid))
+        else:
+            # New image, needs processing
+            images_to_process.append((url, pid))
+    
+    print(f'Images to process: {len(images_to_process)} (New + Reprocess + Fail)')
+    
+    if len(images_to_process) == 0:
+        print('No images to process. All Complete entries will be preserved.')
         return
     
-    results = list(existing_data)  # Start with existing data
-    success_count = 0
-    failed_count = 0
+    # Start with all existing data
+    results_by_id = dict(existing_by_id)
     
-    for url, public_id in new_images:
+    complete_count = 0
+    reprocess_count = 0
+    fail_count = 0
+    
+    for url, public_id in images_to_process:
+        pid = public_id.split('/')[-1]
         try:
             raw_text = ocr_extract_text(url)
             parsed = parse_ocr_to_json(raw_text, url, public_id)
-            results.append(parsed)
             
-            # Check if critical fields were extracted
-            if parsed["sold_date"] and parsed["title"] and parsed["sold_price"]:
-                success_count += 1
-                print(f'✓ Successfully processed: {public_id}')
-            else:
-                failed_count += 1
-                print(f'✗ Failed to extract all fields: {public_id}')
+            # Update or add to results
+            results_by_id[pid] = parsed
+            
+            # Count by status
+            if parsed["success"] == "Complete":
+                complete_count += 1
+                print(f'✓ Complete: {pid}')
+            elif parsed["success"] == "Reprocess":
+                reprocess_count += 1
+                print(f'⚠ Reprocess: {pid} (missing fields)')
                 
         except Exception as e:
-            failed_count += 1
-            print(f'✗ Error processing {url}: {e}')
-            # Add failed entry with minimal info
-            results.append({
+            fail_count += 1
+            error_msg = str(e)
+            print(f'✗ Fail: {pid} - {error_msg}')
+            
+            # Add/update failed entry with "Fail" status
+            results_by_id[pid] = {
                 "sold_date": None,
                 "title": "Error extracting",
                 "sold_price": None,
                 "seller": None,
                 "image_url": url,
                 "processed_at": datetime.utcnow().isoformat() + 'Z',
-                "public_id": public_id.split('/')[-1]
-            })
+                "public_id": pid,
+                "success": "Fail"
+            }
+    
+    # Convert back to list
+    results = list(results_by_id.values())
+    
+    # Count final status breakdown
+    final_complete = sum(1 for r in results if r.get('success') == 'Complete')
+    final_reprocess = sum(1 for r in results if r.get('success') == 'Reprocess')
+    final_fail = sum(1 for r in results if r.get('success') == 'Fail')
     
     print(f'\n=== Processing Summary ===')
-    print(f'Total images found: {len(images)}')
-    print(f'Already processed: {len(processed_ids)}')
-    print(f'New images processed: {len(new_images)}')
-    print(f'Successfully extracted: {success_count}')
-    print(f'Failed extractions: {failed_count}')
-    print(f'Total entries in JSON: {len(results)}')
+    print(f'Total images in Cloudinary: {len(images)}')
+    print(f'Images processed this run: {len(images_to_process)}')
+    print(f'  - New Complete: {complete_count}')
+    print(f'  - New Reprocess: {reprocess_count}')
+    print(f'  - New Fail: {fail_count}')
+    print(f'\n=== Final Status ===')
+    print(f'Complete: {final_complete}')
+    print(f'Reprocess: {final_reprocess}')
+    print(f'Fail: {final_fail}')
+    print(f'Total entries: {len(results)}')
     
     # Save to local JSON file
     output_path = 'data/eBayListings.json'
@@ -272,7 +312,7 @@ def main():
         subprocess.run(['git', 'config', '--global', 'user.email', 'action@github.com'], check=True)
         subprocess.run(['git', 'add', output_path], check=True)
         
-        commit_message = f'Update eBayListings.json - Added {len(new_images)} new entries ({success_count} success, {failed_count} failed) at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        commit_message = f'Update eBayListings.json - Processed {len(images_to_process)} images ({complete_count} complete, {reprocess_count} reprocess, {fail_count} fail) at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
         subprocess.run(['git', 'commit', '-m', commit_message], check=True)
         subprocess.run(['git', 'push', 'origin', 'main'], check=True)
         print('Committed and pushed to GitHub')
