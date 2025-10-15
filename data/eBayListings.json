@@ -115,7 +115,7 @@
         "sold_price": "675.00",
         "seller": "raffertyguitars",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220396/website-screenshots/item1b2f5b911c.webp",
-        "processed_at": "2025-10-15T22:23:08.580376Z",
+        "processed_at": "2025-10-15T23:27:27.801093Z",
         "public_id": "item1b2f5b911c",
         "success": "Reprocess"
     },
@@ -175,7 +175,7 @@
         "sold_price": "11.49",
         "seller": "bananarepairman234",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220758/website-screenshots/item1d5e3b4a32.webp",
-        "processed_at": "2025-10-15T22:23:10.095360Z",
+        "processed_at": "2025-10-15T23:27:29.097424Z",
         "public_id": "item1d5e3b4a32",
         "success": "Reprocess"
     },
@@ -205,7 +205,7 @@
         "sold_price": "39.00",
         "seller": "supersajon",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220357/website-screenshots/item1d8ac37b32.webp",
-        "processed_at": "2025-10-15T22:23:11.486942Z",
+        "processed_at": "2025-10-15T23:27:31.040271Z",
         "public_id": "item1d8ac37b32",
         "success": "Reprocess"
     },
@@ -495,7 +495,7 @@
         "sold_price": null,
         "seller": "forward330",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219965/website-screenshots/item1fc21e57cd.webp",
-        "processed_at": "2025-10-15T22:23:13.081061Z",
+        "processed_at": "2025-10-15T23:27:32.338712Z",
         "public_id": "item1fc21e57cd",
         "success": "Reprocess"
     },
@@ -1955,7 +1955,7 @@
         "sold_price": "11.99",
         "seller": "yo_baby_sup",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219948/website-screenshots/item2fe546e65d.webp",
-        "processed_at": "2025-10-15T22:23:14.304300Z",
+        "processed_at": "2025-10-15T23:27:33.942151Z",
         "public_id": "item2fe546e65d",
         "success": "Reprocess"
     },
@@ -2015,7 +2015,7 @@
         "sold_price": "5.28",
         "seller": "stetroit442",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220664/website-screenshots/item3457796eaa.webp",
-        "processed_at": "2025-10-15T22:23:15.488043Z",
+        "processed_at": "2025-10-15T23:27:35.565483Z",
         "public_id": "item3457796eaa",
         "success": "Reprocess"
     },
@@ -2225,7 +2225,7 @@
         "sold_price": "20.00",
         "seller": "mmmm7210",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220531/website-screenshots/item36fbfaf276.webp",
-        "processed_at": "2025-10-15T22:23:16.774087Z",
+        "processed_at": "2025-10-15T23:27:36.848852Z",
         "public_id": "item36fbfaf276",
         "success": "Reprocess"
     },
@@ -2735,7 +2735,7 @@
         "sold_price": "65.00",
         "seller": "floodlitl",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220723/website-screenshots/item3e3ed27dc7.webp",
-        "processed_at": "2025-10-15T22:23:19.439386Z",
+        "processed_at": "2025-10-15T23:27:38.156453Z",
         "public_id": "item3e3ed27dc7",
         "success": "Reprocess"
     },
@@ -3710,14 +3710,14 @@
         "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Oct 13, 2025",
+        "title": "NME AWARDS BOX SET 2009 PICTURES OF YOU/TRIBUTE TO GODLIKE GENIUSES THE CURE CD",
+        "sold_price": "10.69",
+        "seller": "dcds47",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760404611/website-screenshots/item49643e150f.webp",
-        "processed_at": "2025-10-15T22:23:42.776690Z",
+        "processed_at": "2025-10-15T23:27:39.461159Z",
         "public_id": "item49643e150f",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
         "sold_date": "Sep 29, 2025",
@@ -3805,7 +3805,7 @@
         "sold_price": "10.00",
         "seller": "tbrooks2175",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220656/website-screenshots/item49d284b9ec.webp",
-        "processed_at": "2025-10-15T22:23:56.762825Z",
+        "processed_at": "2025-10-15T23:27:40.744135Z",
         "public_id": "item49d284b9ec",
         "success": "Reprocess"
     },
@@ -3865,7 +3865,7 @@
         "sold_price": "25.00",
         "seller": "jacbru-39",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220750/website-screenshots/item49d5de239d.webp",
-        "processed_at": "2025-10-15T22:24:06.264112Z",
+        "processed_at": "2025-10-15T23:27:42.285696Z",
         "public_id": "item49d5de239d",
         "success": "Reprocess"
     },
@@ -4225,7 +4225,7 @@
         "sold_price": "25.00",
         "seller": "thewordthatwon",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220635/website-screenshots/item4e39ff9bda.webp",
-        "processed_at": "2025-10-15T22:24:57.613239Z",
+        "processed_at": "2025-10-15T23:27:43.691284Z",
         "public_id": "item4e39ff9bda",
         "success": "Reprocess"
     },
@@ -4845,7 +4845,7 @@
         "sold_price": "60.90",
         "seller": "lovevinylrecords",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220660/website-screenshots/item57a2aa0a84.webp",
-        "processed_at": "2025-10-15T22:26:27.820623Z",
+        "processed_at": "2025-10-15T23:27:45.315004Z",
         "public_id": "item57a2aa0a84",
         "success": "Reprocess"
     },
@@ -4900,14 +4900,14 @@
         "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 12, 2025",
+        "title": "The Lawrence Arms - We Are The Champions of the World 2xlp nofx alkaline trio",
+        "sold_price": "67.05",
+        "seller": "jeyshayza86",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219933/website-screenshots/item57ab1f8e79.webp",
-        "processed_at": "2025-10-15T22:26:35.422796Z",
+        "processed_at": "2025-10-15T23:27:46.616866Z",
         "public_id": "item57ab1f8e79",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
         "sold_date": "Sep 30, 2025",
@@ -4990,14 +4990,14 @@
         "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 27, 2025",
+        "title": "ALKALINE TRIO Crimson / Vinyl 2xLP limited on COLORED NOFX Mxpx BLINK 182",
+        "sold_price": "86.00",
+        "seller": "jerseyrecs",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219775/website-screenshots/item5a222c66b6.webp",
-        "processed_at": "2025-10-15T22:26:47.516361Z",
+        "processed_at": "2025-10-15T23:27:48.086614Z",
         "public_id": "item5a222c66b6",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
         "sold_date": null,
@@ -5005,7 +5005,7 @@
         "sold_price": "26.99",
         "seller": "wax_gold",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760223944/website-screenshots/item5a23da7099.webp",
-        "processed_at": "2025-10-15T22:26:49.032392Z",
+        "processed_at": "2025-10-15T23:27:49.567365Z",
         "public_id": "item5a23da7099",
         "success": "Reprocess"
     },
@@ -5190,14 +5190,14 @@
         "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Oct 6, 2025",
+        "title": "Alkaline Trio - From Here to Infirmary - Alkaline Trio CD ZHVG The Fast Free FREE US DELIVERY | EAN: 5055052800929 | Quality CD",
+        "sold_price": "19.99",
+        "seller": "worldofbooksusa",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760223958/website-screenshots/item5b784c45f0.webp",
-        "processed_at": "2025-10-15T22:27:15.264528Z",
+        "processed_at": "2025-10-15T23:27:51.206634Z",
         "public_id": "item5b784c45f0",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
         "sold_date": "Sep 26, 2025",
@@ -5255,278 +5255,278 @@
         "sold_price": "7.99",
         "seller": "anhjelm20",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219810/website-screenshots/item5c4461d199.webp",
-        "processed_at": "2025-10-15T22:27:24.733309Z",
+        "processed_at": "2025-10-15T23:27:52.552474Z",
         "public_id": "item5c4461d199",
         "success": "Reprocess"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Oct 12, 2025",
+        "title": "Vintage 90s Alkaline Trio Band Hoodie Sweatshirt Sz XL Black Punk Rock Band",
+        "sold_price": "149.99",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760356315/website-screenshots/item5c45266b2a.webp",
-        "processed_at": "2025-10-15T22:27:25.123850Z",
+        "processed_at": "2025-10-15T23:27:53.978187Z",
         "public_id": "item5c45266b2a",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 22, 2025",
+        "title": "Alkaline Trio VTG CD lot bundle Including Tuesday and Heavens CD's",
+        "sold_price": "135.00",
+        "seller": "theaveragejoedad",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220501/website-screenshots/item5c5654b990.webp",
-        "processed_at": "2025-10-15T22:27:25.535834Z",
+        "processed_at": "2025-10-15T23:27:55.528218Z",
         "public_id": "item5c5654b990",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Jul 29, 2025",
+        "title": "ALKALINE TRIO IS THIS THING CURSED?",
+        "sold_price": "12.97",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220737/website-screenshots/item5c576d60a8.webp",
-        "processed_at": "2025-10-15T22:27:25.947703Z",
+        "processed_at": "2025-10-15T23:27:57.055497Z",
         "public_id": "item5c576d60a8",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Jul 16, 2025",
+        "title": "Alkaline Trio - Remains 2 CD Set Vagrant Records",
+        "sold_price": "12.00",
+        "seller": "jdashcastillo",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220979/website-screenshots/item5c5efb58e7.webp",
-        "processed_at": "2025-10-15T22:27:26.332193Z",
+        "processed_at": "2025-10-15T23:27:58.758079Z",
         "public_id": "item5c5efb58e7",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Jul 20, 2025",
+        "title": "Alkaline Trio Shirt Gildan 2010s Graphic Band Tour Concert Tee Medium",
+        "sold_price": "25.00",
+        "seller": "fash",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220930/website-screenshots/item5c6094c952.webp",
-        "processed_at": "2025-10-15T22:27:26.716895Z",
+        "processed_at": "2025-10-15T23:28:00.057893Z",
         "public_id": "item5c6094c952",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 1, 2025",
+        "title": "1200",
+        "sold_price": "54.05",
+        "seller": "lessthanthreerecords",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220383/website-screenshots/item5c60d96487.webp",
-        "processed_at": "2025-10-15T22:27:27.114572Z",
+        "processed_at": "2025-10-15T23:28:01.546859Z",
         "public_id": "item5c60d96487",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 20, 2025",
+        "title": "Alkaline Trio embroidered Iron on patch Chicago Punk Pop",
+        "sold_price": "4.77",
+        "seller": "okraider",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219848/website-screenshots/item5c66f6886d.webp",
-        "processed_at": "2025-10-15T22:27:27.517515Z",
+        "processed_at": "2025-10-15T23:28:03.060853Z",
         "public_id": "item5c66f6886d",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Jul 22, 2025",
+        "title": "Alkaline Trio Stupid Kid Cd Single Promo",
+        "sold_price": "6.00",
+        "seller": "emodork23",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220917/website-screenshots/item5c68a69590.webp",
-        "processed_at": "2025-10-15T22:27:27.903355Z",
+        "processed_at": "2025-10-15T23:28:04.574726Z",
         "public_id": "item5c68a69590",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 28, 2025",
+        "title": "Fender Alkaline Trio Malibu California Series Mahogany Natural Acoustic Guitar",
+        "sold_price": "495.00",
+        "seller": "mikyane_8",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220434/website-screenshots/item5c69a151e6.webp",
-        "processed_at": "2025-10-15T22:27:28.317681Z",
+        "processed_at": "2025-10-15T23:28:06.321028Z",
         "public_id": "item5c69a151e6",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Aug 26, 2025",
+        "title": "Fender Alkaline Trio Signature Malibu Acoustic Guitar",
+        "sold_price": "550.00",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220475/website-screenshots/item5c6b44eddb.webp",
-        "processed_at": "2025-10-15T22:27:28.699099Z",
+        "processed_at": "2025-10-15T23:28:07.776211Z",
         "public_id": "item5c6b44eddb",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Sep 4, 2025",
+        "title": "Hurricane Season by Dan Andriano Emergency Room (CD, Asian Man) Alkaline Trio",
+        "sold_price": "5.00",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220361/website-screenshots/item5c6fa6621f.webp",
-        "processed_at": "2025-10-15T22:27:29.096644Z",
+        "processed_at": "2025-10-15T23:28:09.248451Z",
         "public_id": "item5c6fa6621f",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Sep 8, 2025",
+        "title": "Alkaline Trio XL Men's T Shirt, Rose Skull Design, Punk/Emo",
+        "sold_price": "17.00",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219963/website-screenshots/item5c6ff5911d.webp",
-        "processed_at": "2025-10-15T22:27:29.474462Z",
+        "processed_at": "2025-10-15T23:28:11.044095Z",
         "public_id": "item5c6ff5911d",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 8, 2025",
+        "title": "New MSYiii 3x5 of Doctor Victor Von Doom Alkaline Trio Original Punk Artwork",
+        "sold_price": "18.00",
+        "seller": "outerchurch",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219959/website-screenshots/item5c6ffe3be3.webp",
-        "processed_at": "2025-10-15T22:27:29.870930Z",
+        "processed_at": "2025-10-15T23:28:12.496286Z",
         "public_id": "item5c6ffe3be3",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 28, 2025",
+        "title": "Alkaline Trio - Halloween at the Metro [DVD]",
+        "sold_price": "9.29",
+        "seller": "goodwillsoutherncalifornia12",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219762/website-screenshots/item5c71fc5861.webp",
-        "processed_at": "2025-10-15T22:27:30.268012Z",
+        "processed_at": "2025-10-15T23:28:13.822292Z",
         "public_id": "item5c71fc5861",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Oct 8, 2025",
+        "title": "Alkaline Trio Blue Meanies 7\" vinyl record Rare picture disc /1000 Bye Bye Love",
+        "sold_price": "30.00",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760223921/website-screenshots/item5c76ace577.webp",
-        "processed_at": "2025-10-15T22:27:30.686059Z",
+        "processed_at": "2025-10-15T23:28:15.353200Z",
         "public_id": "item5c76ace577",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 20, 2025",
+        "title": "Alkaline Trio Good Mourning Album Release promo STICKER",
+        "sold_price": "3.99",
+        "seller": "barley50",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219843/website-screenshots/item5e4cf49d41.webp",
-        "processed_at": "2025-10-15T22:27:31.088307Z",
+        "processed_at": "2025-10-15T23:28:16.890346Z",
         "public_id": "item5e4cf49d41",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 12, 2025",
+        "title": "Vintage Rare Alkaline Trio T-Shirt",
+        "sold_price": "150.00",
+        "seller": "buy-my-stuff-plz",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219936/website-screenshots/item5e6318fa89.webp",
-        "processed_at": "2025-10-15T22:27:31.483203Z",
+        "processed_at": "2025-10-15T23:28:18.576666Z",
         "public_id": "item5e6318fa89",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Oct 8, 2025",
+        "title": "Vtg Y2ks Alkaline Trio T-Shirt Punk Rock Band Goth Blink 182 Matt Skiba Size XL",
+        "sold_price": "74.00",
+        "seller": "dshum55",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760223916/website-screenshots/item5e66a54bd5.webp",
-        "processed_at": "2025-10-15T22:27:31.894994Z",
+        "processed_at": "2025-10-15T23:28:20.090046Z",
         "public_id": "item5e66a54bd5",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Jul 19, 2025",
+        "title": "Alkaline Trio - Remains -2007 Punk Compilation CD / DVD",
+        "sold_price": "25.00",
+        "seller": "colmex",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220945/website-screenshots/item5e7f53d364.webp",
-        "processed_at": "2025-10-15T22:27:32.306989Z",
+        "processed_at": "2025-10-15T23:28:21.555893Z",
         "public_id": "item5e7f53d364",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Jul 17, 2025",
+        "title": "Alkaline Trio Blood, Hair, and Eyeballs (CD) Album Another great item from Rarewaves USA | Free delivery! |",
+        "sold_price": "18.17",
+        "seller": "rarewaves-usa",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220390/website-screenshots/item5e8513e93e.webp",
-        "processed_at": "2025-10-15T22:27:32.692700Z",
+        "processed_at": "2025-10-15T23:28:22.904191Z",
         "public_id": "item5e8513e93e",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 17, 2025",
+        "title": "#A17 Alkaline Trio- Crimson- CD 2005",
+        "sold_price": "4.25",
+        "seller": "alentriada",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220568/website-screenshots/item5e89dd1f47.webp",
-        "processed_at": "2025-10-15T22:27:33.078399Z",
+        "processed_at": "2025-10-15T23:28:24.342270Z",
         "public_id": "item5e89dd1f47",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 31, 2025",
+        "title": "RARE 2003 Alkaline Trio Sticker Pack (5)",
+        "sold_price": "8.00",
+        "seller": "bandmerch95",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220394/website-screenshots/item5e8d3fb60f.webp",
-        "processed_at": "2025-10-15T22:27:33.479058Z",
+        "processed_at": "2025-10-15T23:28:25.906053Z",
         "public_id": "item5e8d3fb60f",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 9, 2025",
+        "title": "Alkaline Trio autographed concert poster Dan Andriano, Matt Skiba, Derek Grant",
+        "sold_price": "61.00",
+        "seller": "chriscraf46",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220630/website-screenshots/item5e8d7471b7.webp",
-        "processed_at": "2025-10-15T22:27:33.879580Z",
+        "processed_at": "2025-10-15T23:28:27.541005Z",
         "public_id": "item5e8d7471b7",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 26, 2025",
+        "title": "Alkaline Trio Good Mourning Unisex Black T-shirt Size S-5XL",
+        "sold_price": "6.64",
+        "seller": "haiduchyk_0",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219784/website-screenshots/item5e8f559c24.webp",
-        "processed_at": "2025-10-15T22:27:34.260501Z",
+        "processed_at": "2025-10-15T23:28:29.058410Z",
         "public_id": "item5e8f559c24",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Aug 27, 2025",
+        "title": "Alkaline Trio signed, autographed concert poster Dan Andriano, Derek Grant, Matt",
+        "sold_price": "51.00",
+        "seller": "carrerac_74",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220452/website-screenshots/item5e90652974.webp",
-        "processed_at": "2025-10-15T22:27:34.671914Z",
+        "processed_at": "2025-10-15T23:28:30.541254Z",
         "public_id": "item5e90652974",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
-        "seller": null,
+        "sold_date": "Sep 3, 2025",
+        "title": "#A39 Alkaline Trio - Maybe I'll Catch Fire LP Vinyl",
+        "sold_price": "18.00",
+        "seller": "alentriada",
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760220366/website-screenshots/item5e90d7726b.webp",
-        "processed_at": "2025-10-15T22:27:35.053227Z",
+        "processed_at": "2025-10-15T23:28:32.031804Z",
         "public_id": "item5e90d7726b",
-        "success": "Fail"
+        "success": "Complete"
     },
     {
-        "sold_date": null,
-        "title": "Error extracting",
-        "sold_price": null,
+        "sold_date": "Sep 20, 2025",
+        "title": "Fender Malibu Alkaline Trio Limited Edition Acoustic Guitar + Bag + Stand Open Box",
+        "sold_price": "450.00",
         "seller": null,
         "image_url": "https://res.cloudinary.com/deszdrhjx/image/upload/v1760219854/website-screenshots/item5e945bc8e3.webp",
-        "processed_at": "2025-10-15T22:27:35.451115Z",
+        "processed_at": "2025-10-15T23:28:33.829546Z",
         "public_id": "item5e945bc8e3",
-        "success": "Fail"
+        "success": "Complete"
     }
 ]
