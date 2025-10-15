@@ -16,26 +16,55 @@ FTP_SERVER = os.getenv('FTP_SERVER')
 FTP_USERNAME = os.getenv('FTP_USERNAME')
 FTP_PASSWORD = os.getenv('FTP_PASSWORD')
 FOLDER_PREFIX = 'website-screenshots/'
-MAX_RESULTS = 50
+MAX_RESULTS = 500  # Cloudinary's max per request
 
-# Step 1: List images from Cloudinary
+# Step 1: List ALL images from Cloudinary with pagination
 def list_cloudinary_images():
     url = f'https://api.cloudinary.com/v1_1/{CLOUD_NAME}/resources/image'
-    params = {
-        'type': 'upload',
-        'prefix': FOLDER_PREFIX,
-        'max_results': MAX_RESULTS,
-        'direction': 'desc'
-    }
     auth = base64.b64encode(f'{API_KEY}:{API_SECRET}'.encode()).decode()
     headers = {'Authorization': f'Basic {auth}'}
     
-    response = requests.get(url, params=params, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f'Error listing images: {response.text}')
+    all_resources = []
+    next_cursor = None
+    page = 1
     
-    resources = response.json().get('resources', [])
-    return [(res['secure_url'], res['public_id']) for res in resources if res['format'] in ['jpg', 'png', 'webp']]
+    while True:
+        params = {
+            'type': 'upload',
+            'prefix': FOLDER_PREFIX,
+            'max_results': MAX_RESULTS,
+            'direction': 'desc'
+        }
+        
+        if next_cursor:
+            params['next_cursor'] = next_cursor
+        
+        print(f'Fetching page {page} from Cloudinary...')
+        response = requests.get(url, params=params, headers=headers)
+        
+        if response.status_code != 200:
+            raise Exception(f'Error listing images: {response.text}')
+        
+        data = response.json()
+        resources = data.get('resources', [])
+        all_resources.extend(resources)
+        
+        print(f'  Retrieved {len(resources)} images (Total so far: {len(all_resources)})')
+        
+        # Check if there are more pages
+        next_cursor = data.get('next_cursor')
+        if not next_cursor:
+            print(f'Finished fetching all images. Total: {len(all_resources)}')
+            break
+        
+        page += 1
+    
+    # Filter for valid image formats and return tuples
+    valid_images = [(res['secure_url'], res['public_id']) for res in all_resources 
+                    if res['format'] in ['jpg', 'png', 'webp']]
+    
+    print(f'Valid images (jpg/png/webp): {len(valid_images)}')
+    return valid_images
 
 # Step 2: OCR extract text from image URL
 def ocr_extract_text(image_url):
@@ -156,7 +185,7 @@ def main():
     print(f'Found {len(images)} images from Cloudinary.')
     
     # Load existing data
-    output_path = 'data/eBayListings.json'
+    output_path = 'data/EbayListings.json'
     existing_data = load_existing_json(output_path)
     
     # Create a set of already processed public_ids for fast lookup
@@ -212,14 +241,14 @@ def main():
     print(f'Total entries in JSON: {len(results)}')
     
     # Save to local JSON file
-    output_path = 'data/eBayListings.json'
+    output_path = 'data/EbayListings.json'
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
     print(f'\nSaved {len(results)} total entries to {output_path}')
 
     # Upload to FTP server
     try:
-        remote_path = 'public_html/data/eBayListings.json'
+        remote_path = 'public_html/data/EbayListings.json'
         upload_to_ftp(output_path, remote_path)
     except Exception as e:
         print(f'Warning: FTP upload failed but continuing: {e}')
